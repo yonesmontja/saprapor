@@ -85,11 +85,8 @@
     <h5 class="mt-3 text-muted fw-bold" id="loadingText">Menyiapkan Dasbor Mutu Akademik...</h5>
   </div>
 
-  <!-- Identitas URL & Navigasi Terpadu -->
-  <script>
-    const SCRIPT_URL = "<?= scriptUrl ?>";
-  </script>
-  <?!= include('navbar'); ?>
+  <!-- PEMBARUAN: Wadah Navigasi Dinamis untuk GitHub Pages -->
+  <div id="nav-placeholder"></div>
 
   <div class="container mt-4 mb-5">
 
@@ -156,7 +153,6 @@
           <small class="fw-bold text-muted mt-1">Entri Nilai</small>
         </div>
       </div>
-      <!-- KARTU BARU: JUMLAH ENTRI JURNAL -->
       <div class="col-6 col-lg-2 col-md-4">
         <div class="card metric-card p-3 shadow-sm h-100" style="background-color: rgba(111, 66, 193, 0.1); color: #6f42c1;">
           <h2 class="fw-bold m-0" id="d_jurnal">0</h2>
@@ -193,7 +189,6 @@
             <span class="badge bg-primary">TransNilai</span>
           </div>
           <h2 class="fw-bold m-0 my-1" id="d_stnkm_aka_avg">0</h2>
-          <!-- Rincian 5 Pilar STNKM Akademik -->
           <div class="d-flex justify-content-center flex-wrap gap-1 mt-1" style="font-size: 11px;">
             <span class="badge bg-primary" title="Skill">S: <b id="d_stnkm_aka_s">0</b></span>
             <span class="badge bg-success" title="Teori">T: <b id="d_stnkm_aka_t">0</b></span>
@@ -212,7 +207,6 @@
             <span class="badge bg-success">TransJurnal</span>
           </div>
           <h2 class="fw-bold m-0 my-1" id="d_stnkm_jur_avg">0 Pts</h2>
-          <!-- Rincian 5 Pilar STNKM Jurnal -->
           <div class="d-flex justify-content-center flex-wrap gap-1 mt-1" style="font-size: 11px;">
             <span class="badge bg-primary" title="Skill">S: <b id="d_stnkm_jur_s">0</b></span>
             <span class="badge bg-success" title="Teori">T: <b id="d_stnkm_jur_t">0</b></span>
@@ -224,7 +218,7 @@
       </div>
     </div>
 
-    <!-- SISTEM PERINGATAN DINI (EWS) DENGAN SEARCH, SORTIR, DAN PAGINASI -->
+    <!-- SISTEM PERINGATAN DINI (EWS) -->
     <div class="card shadow-sm border-0 rounded-4 mb-4 ews-card bg-white p-4">
       <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3 gap-2">
         <div>
@@ -235,47 +229,26 @@
         </div>
 
         <div class="d-flex flex-wrap align-items-center gap-2">
-          <!-- Filter Kategori EWS -->
           <div class="btn-group btn-group-sm" id="ewsFilterButtonGroup">
-            <button class="btn btn-outline-danger active fw-bold rounded-pill px-3" onclick="filterEwsList('ALL')">
-          Semua (<span id="cntEwsTotal">0</span>)
-        </button>
-            <button class="btn btn-outline-danger fw-bold rounded-pill px-3 ms-1" onclick="filterEwsList('AKADEMIK')">
-          Akademik (<span id="cntEwsAkademik">0</span>)
-        </button>
-            <button class="btn btn-outline-danger fw-bold rounded-pill px-3 ms-1" onclick="filterEwsList('PRESENSI')">
-          Presensi (<span id="cntEwsPresensi">0</span>)
-        </button>
-            <button class="btn btn-outline-danger fw-bold rounded-pill px-3 ms-1" onclick="filterEwsList('KARAKTER')">
-          Karakter (<span id="cntEwsKarakter">0</span>)
-        </button>
+            <button class="btn btn-outline-danger active fw-bold rounded-pill px-3" onclick="filterEwsList('ALL')">Semua (<span id="cntEwsTotal">0</span>)</button>
+            <button class="btn btn-outline-danger fw-bold rounded-pill px-3 ms-1" onclick="filterEwsList('AKADEMIK')">Akademik (<span id="cntEwsAkademik">0</span>)</button>
+            <button class="btn btn-outline-danger fw-bold rounded-pill px-3 ms-1" onclick="filterEwsList('PRESENSI')">Presensi (<span id="cntEwsPresensi">0</span>)</button>
+            <button class="btn btn-outline-danger fw-bold rounded-pill px-3 ms-1" onclick="filterEwsList('KARAKTER')">Karakter (<span id="cntEwsKarakter">0</span>)</button>
           </div>
-
-          <!-- Toolbar Zoom & Ekspor EWS -->
           <div class="btn-group btn-group-sm ms-md-2">
-            <button class="btn btn-outline-secondary btn-action-chart" onclick="zoomEWS()" title="Perbesar Tampilan Tabel EWS">
-          <i class="fa-solid fa-expand me-1"></i> Perbesar
-        </button>
+            <button class="btn btn-outline-secondary btn-action-chart" onclick="zoomEWS()" title="Perbesar Tampilan Tabel EWS"><i class="fa-solid fa-expand me-1"></i> Perbesar</button>
             <div class="dropdown d-inline-block">
-              <button class="btn btn-outline-danger btn-action-chart dropdown-toggle" data-bs-toggle="dropdown" title="Simpan Dokumen EWS">
-            <i class="fa-solid fa-download me-1"></i> Simpan / Cetak
-          </button>
+              <button class="btn btn-outline-danger btn-action-chart dropdown-toggle" data-bs-toggle="dropdown" title="Simpan Dokumen EWS"><i class="fa-solid fa-download me-1"></i> Simpan / Cetak</button>
               <ul class="dropdown-menu dropdown-menu-end shadow">
-                <li><a class="dropdown-item small" href="javascript:void(0)"
-                    onclick="downloadEwsPNG()"><i class="fa-solid fa-image text-primary me-2"></i>Gambar (.PNG)</a></li>
-                <li><a class="dropdown-item small" href="javascript:void(0)"
-                    onclick="downloadEwsCSV()"><i class="fa-solid fa-file-csv text-success me-2"></i>Data Tabel
-                    (.CSV)</a></li>
-                <li><a class="dropdown-item small" href="javascript:void(0)"
-                    onclick="downloadEwsPDF()"><i class="fa-solid fa-file-pdf text-danger me-2"></i>Cetak Laporan Resmi
-                    (.PDF)</a></li>
+                <li><a class="dropdown-item small" href="javascript:void(0)" onclick="downloadEwsPNG()"><i class="fa-solid fa-image text-primary me-2"></i>Gambar (.PNG)</a></li>
+                <li><a class="dropdown-item small" href="javascript:void(0)" onclick="downloadEwsCSV()"><i class="fa-solid fa-file-csv text-success me-2"></i>Data Tabel (.CSV)</a></li>
+                <li><a class="dropdown-item small" href="javascript:void(0)" onclick="downloadEwsPDF()"><i class="fa-solid fa-file-pdf text-danger me-2"></i>Cetak Laporan Resmi (.PDF)</a></li>
               </ul>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- INPUT PENCARIAN EWS REAL-TIME -->
       <div class="row mb-3 g-2">
         <div class="col-md-5 col-12">
           <div class="input-group input-group-sm">
@@ -285,95 +258,65 @@
         </div>
       </div>
 
-      <!-- TABEL SISWA TERDETEKSI EWS DENGAN SORTABLE HEADERS -->
       <div class="table-responsive">
         <table class="table table-hover table-bordered align-middle text-center m-0" style="font-size: 13px;">
           <thead class="table-danger">
             <tr>
-              <th width="5%" class="sortable text-nowrap" onclick="sortEwsTable('no')">No
-                <i class="fa-solid fa-sort"></i></th>
-              <th width="24%" class="sortable text-start text-nowrap" onclick="sortEwsTable('siswa')">Peserta Didik
-                <i class="fa-solid fa-sort"></i></th>
-              <th width="14%" class="sortable text-nowrap" onclick="sortEwsTable('risiko')">Tingkat Risiko
-                <i class="fa-solid fa-sort"></i></th>
-              <th width="15%" class="sortable text-nowrap" onclick="sortEwsTable('kategori')">Kategori Masalah
-                <i class="fa-solid fa-sort"></i></th>
+              <th width="5%" class="sortable text-nowrap" onclick="sortEwsTable('no')">No <i class="fa-solid fa-sort"></i></th>
+              <th width="24%" class="sortable text-start text-nowrap" onclick="sortEwsTable('siswa')">Peserta Didik <i class="fa-solid fa-sort"></i></th>
+              <th width="14%" class="sortable text-nowrap" onclick="sortEwsTable('risiko')">Tingkat Risiko <i class="fa-solid fa-sort"></i></th>
+              <th width="15%" class="sortable text-nowrap" onclick="sortEwsTable('kategori')">Kategori Masalah <i class="fa-solid fa-sort"></i></th>
               <th width="30%" class="text-start">Detail Catatan / Temuan Bukti Masalah</th>
               <th width="12%">Aksi Cepat</th>
             </tr>
           </thead>
           <tbody id="ewsTableBody">
-            <tr>
-              <td colspan="6" class="text-center text-muted py-4">Memindai indikator peringatan dini kelas...</td>
-            </tr>
+            <tr><td colspan="6" class="text-center text-muted py-4">Memindai indikator peringatan dini kelas...</td></tr>
           </tbody>
         </table>
       </div>
 
-      <!-- KONTROL PAGINASI EWS -->
       <div class="d-flex justify-content-between align-items-center mt-3" id="ewsPaginationContainer">
-        <button class="btn btn-sm btn-outline-danger fw-bold" id="btnPrevEws" onclick="changeEwsPage(-1)">
-      <i class="fa-solid fa-chevron-left me-1"></i> Sebelumnya
-    </button>
+        <button class="btn btn-sm btn-outline-danger fw-bold" id="btnPrevEws" onclick="changeEwsPage(-1)"><i class="fa-solid fa-chevron-left me-1"></i> Sebelumnya</button>
         <span id="pageIndicatorEws" class="text-muted fw-bold small">Halaman 1 dari 1</span>
-        <button class="btn btn-sm btn-outline-danger fw-bold" id="btnNextEws" onclick="changeEwsPage(1)">
-      Selanjutnya <i class="fa-solid fa-chevron-right ms-1"></i>
-    </button>
+        <button class="btn btn-sm btn-outline-danger fw-bold" id="btnNextEws" onclick="changeEwsPage(1)">Selanjutnya <i class="fa-solid fa-chevron-right ms-1"></i></button>
       </div>
     </div>
 
-    <!-- PENGEMBANGAN 2: GRAFIK PROGRES STNKM (5 GARIS - KONTINU SEPANJANG WAKTU) -->
+    <!-- GRAFIK PROGRES STNKM -->
     <div class="card chart-panel-card p-4 shadow-sm mb-4 border-0 rounded-4">
       <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3 gap-2">
         <div>
-          <h5 class="fw-bold text-primary m-0">
-            <i class="fa-solid fa-timeline me-2"></i>Grafik Progres Capaian STNKM (5 Dimensi Kontinu)
-          </h5>
-          <small class="text-muted">Pergerakan dinamis 5 pilar kompetensi holistik: S (Skill), T (Teori), N (Nalar), K (Karakter), dan M (Minat) tanpa sumbu waktu terputus</small>
+          <h5 class="fw-bold text-primary m-0"><i class="fa-solid fa-timeline me-2"></i>Grafik Progres Capaian STNKM</h5>
+          <small class="text-muted">Pergerakan dinamis 5 pilar kompetensi holistik tanpa sumbu waktu terputus</small>
         </div>
 
-        <!-- Filter Subjek & Skala Waktu Progres -->
         <div class="d-flex flex-wrap align-items-center gap-2">
-          <!-- Filter Subjek Siswa / Kelas -->
           <div>
             <select class="form-select form-select-sm border-primary fw-semibold" id="line_stnkm_siswa" onchange="renderChartLineSTNKM()" style="min-width: 190px;">
               <option value="ALL">-- Rata-rata Kelas --</option>
             </select>
           </div>
-          <!-- Pemilih Sistem Data: Akademik vs Observasi Jurnal -->
           <div>
             <select class="form-select form-select-sm border-primary fw-semibold" id="line_stnkm_sumber" onchange="renderChartLineSTNKM()">
-              <option value="AKADEMIK" selected>Akademik (TransNilai - Poin STNKM)</option>
-              <option value="JURNAL">Karakter/Observasi (TransJurnal - Val STNKM)</option>
+              <option value="AKADEMIK" selected>Akademik (TransNilai)</option>
+              <option value="JURNAL">Karakter (TransJurnal)</option>
             </select>
           </div>
-          <!-- Filter Granularitas Waktu -->
           <div>
             <select class="form-select form-select-sm border-primary fw-semibold" id="line_stnkm_time" onchange="renderChartLineSTNKM()">
-              <option value="daily">Per Hari (Harian)</option>
-              <option value="weekly">Per Minggu (Mingguan)</option>
-              <option value="monthly" selected>Per Bulan (Bulanan)</option>
+              <option value="daily">Harian</option>
+              <option value="weekly">Mingguan</option>
+              <option value="monthly" selected>Bulanan</option>
             </select>
           </div>
-          <!-- Toolbar Ekspor & Zoom Progres STNKM -->
           <div class="btn-group btn-group-sm">
-            <button class="btn btn-outline-secondary btn-action-chart" onclick="zoomChart('chartLineSTNKM', 'Progres Capaian 5 Dimensi STNKM')" title="Perbesar Tampilan">
-              <i class="fa-solid fa-expand"></i>
-            </button>
+            <button class="btn btn-outline-secondary btn-action-chart" onclick="zoomChart('chartLineSTNKM', 'Progres Capaian 5 Dimensi STNKM')" title="Perbesar Tampilan"><i class="fa-solid fa-expand"></i></button>
             <div class="dropdown d-inline-block">
-              <button class="btn btn-outline-primary btn-action-chart dropdown-toggle" data-bs-toggle="dropdown" title="Ekspor Data">
-                <i class="fa-solid fa-download"></i>
-              </button>
+              <button class="btn btn-outline-primary btn-action-chart dropdown-toggle" data-bs-toggle="dropdown" title="Ekspor Data"><i class="fa-solid fa-download"></i></button>
               <ul class="dropdown-menu dropdown-menu-end shadow">
-                <li><a class="dropdown-item small" href="javascript:void(0)"
-                    onclick="downloadChartPNG('chartLineSTNKM', 'Progres_STNKM')"><i class="fa-solid fa-image text-primary me-2"></i>Gambar
-                    (.PNG)</a></li>
-                <li><a class="dropdown-item small" href="javascript:void(0)"
-                    onclick="downloadChartCSV('chartLineSTNKM', 'Progres_STNKM')"><i class="fa-solid fa-file-csv text-success me-2"></i>Data
-                    (.CSV)</a></li>
-                <li><a class="dropdown-item small" href="javascript:void(0)"
-                    onclick="downloadChartPDF('chartLineSTNKM', 'Progres Capaian 5 Dimensi STNKM')"><i class="fa-solid fa-file-pdf text-danger me-2"></i>Cetak
-                    Laporan (.PDF)</a></li>
+                <li><a class="dropdown-item small" href="javascript:void(0)" onclick="downloadChartPNG('chartLineSTNKM', 'Progres_STNKM')"><i class="fa-solid fa-image text-primary me-2"></i>Gambar (.PNG)</a></li>
+                <li><a class="dropdown-item small" href="javascript:void(0)" onclick="downloadChartCSV('chartLineSTNKM', 'Progres_STNKM')"><i class="fa-solid fa-file-csv text-success me-2"></i>Data (.CSV)</a></li>
               </ul>
             </div>
           </div>
@@ -385,155 +328,65 @@
       </div>
     </div>
 
-    <!-- GRID VISUALISASI GRAFIK ANALITIK PELENGKAP -->
+    <!-- GRID VISUALISASI LAINNYA -->
     <div class="row g-4">
-
-      <!-- 1. RADAR STNKM: DNA CAPAIAN 5 DIMENSI -->
       <div class="col-lg-6 col-12">
         <div class="card chart-panel-card p-3 shadow-sm h-100">
           <div class="d-flex justify-content-between align-items-center mb-2">
             <div>
-              <h6 class="fw-bold text-primary m-0"><i class="fa-solid fa-spider me-1"></i>Matriks Radar STNKM (DNA
-                Holistik)</h6>
+              <h6 class="fw-bold text-primary m-0"><i class="fa-solid fa-spider me-1"></i>Matriks Radar STNKM</h6>
               <small class="text-muted" style="font-size: 11px;">Perbandingan Skor 5 Dimensi vs Standar KKM Target</small>
             </div>
-            <!-- Toolbar Ekspor & Zoom -->
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-secondary btn-action-chart" onclick="zoomChart('chartRadarSTNKM', 'Matriks Radar 5 Dimensi STNKM')" title="Perbesar Tampilan">
-                <i class="fa-solid fa-expand"></i>
-              </button>
-              <div class="dropdown">
-                <button class="btn btn-outline-primary btn-action-chart dropdown-toggle" data-bs-toggle="dropdown" title="Ekspor Data">
-                  <i class="fa-solid fa-download"></i>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end shadow">
-                  <li><a class="dropdown-item small" href="javascript:void(0)"
-                      onclick="downloadChartPNG('chartRadarSTNKM', 'Radar_STNKM')"><i class="fa-solid fa-image text-primary me-2"></i>Gambar
-                      (.PNG)</a></li>
-                  <li><a class="dropdown-item small" href="javascript:void(0)"
-                      onclick="downloadChartCSV('chartRadarSTNKM', 'Radar_STNKM')"><i class="fa-solid fa-file-csv text-success me-2"></i>Data
-                      (.CSV)</a></li>
-                  <li><a class="dropdown-item small" href="javascript:void(0)"
-                      onclick="downloadChartPDF('chartRadarSTNKM', 'Matriks Radar 5 Dimensi STNKM')"><i class="fa-solid fa-file-pdf text-danger me-2"></i>Cetak
-                      Laporan (.PDF)</a></li>
-                </ul>
-              </div>
+              <button class="btn btn-outline-secondary btn-action-chart" onclick="zoomChart('chartRadarSTNKM', 'Matriks Radar 5 Dimensi STNKM')"><i class="fa-solid fa-expand"></i></button>
             </div>
           </div>
-          <div style="position: relative; height: 280px;">
-            <canvas id="chartRadarSTNKM"></canvas>
-          </div>
+          <div style="position: relative; height: 280px;"><canvas id="chartRadarSTNKM"></canvas></div>
         </div>
       </div>
 
-      <!-- 2. RATA-RATA CAPAIAN PER MATA PELAJARAN -->
       <div class="col-lg-6 col-12">
         <div class="card chart-panel-card p-3 shadow-sm h-100">
           <div class="d-flex justify-content-between align-items-center mb-2">
             <div>
-              <h6 class="fw-bold text-success m-0"><i class="fa-solid fa-chart-column me-1"></i>Capaian Rata-rata per
-                Mapel</h6>
+              <h6 class="fw-bold text-success m-0"><i class="fa-solid fa-chart-column me-1"></i>Capaian Rata-rata per Mapel</h6>
               <small class="text-muted" style="font-size: 11px;">Distribusi rata-rata nilai mata pelajaran terhadap KKM</small>
             </div>
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-secondary btn-action-chart" onclick="zoomChart('chartMapel', 'Capaian Rata-rata per Mata Pelajaran')" title="Perbesar Tampilan">
-                <i class="fa-solid fa-expand"></i>
-              </button>
-              <div class="dropdown">
-                <button class="btn btn-outline-primary btn-action-chart dropdown-toggle" data-bs-toggle="dropdown" title="Ekspor Data">
-                  <i class="fa-solid fa-download"></i>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end shadow">
-                  <li><a class="dropdown-item small" href="javascript:void(0)"
-                      onclick="downloadChartPNG('chartMapel', 'Rata_Mapel')"><i class="fa-solid fa-image text-primary me-2"></i>Gambar
-                      (.PNG)</a></li>
-                  <li><a class="dropdown-item small" href="javascript:void(0)"
-                      onclick="downloadChartCSV('chartMapel', 'Rata_Mapel')"><i class="fa-solid fa-file-csv text-success me-2"></i>Data
-                      (.CSV)</a></li>
-                  <li><a class="dropdown-item small" href="javascript:void(0)"
-                      onclick="downloadChartPDF('chartMapel', 'Capaian Rata-rata per Mata Pelajaran')"><i class="fa-solid fa-file-pdf text-danger me-2"></i>Cetak
-                      Laporan (.PDF)</a></li>
-                </ul>
-              </div>
+              <button class="btn btn-outline-secondary btn-action-chart" onclick="zoomChart('chartMapel', 'Capaian Rata-rata per Mata Pelajaran')"><i class="fa-solid fa-expand"></i></button>
             </div>
           </div>
-          <div style="position: relative; height: 280px;">
-            <canvas id="chartMapel"></canvas>
-          </div>
+          <div style="position: relative; height: 280px;"><canvas id="chartMapel"></canvas></div>
         </div>
       </div>
 
-      <!-- 3. PROPORSI JENIS PENILAIAN -->
       <div class="col-lg-6 col-12">
         <div class="card chart-panel-card p-3 shadow-sm h-100">
           <div class="d-flex justify-content-between align-items-center mb-2">
             <div>
-              <h6 class="fw-bold text-warning text-dark m-0"><i class="fa-solid fa-chart-pie me-1"></i>Proporsi Jenis
-                Penilaian</h6>
+              <h6 class="fw-bold text-warning text-dark m-0"><i class="fa-solid fa-chart-pie me-1"></i>Proporsi Jenis Penilaian</h6>
               <small class="text-muted" style="font-size: 11px;">Sebaran entri asesmen (Formatif, Sumatif, Tugas, Proyek)</small>
             </div>
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-secondary btn-action-chart" onclick="zoomChart('chartJenis', 'Proporsi Jenis Penilaian')" title="Perbesar Tampilan">
-                <i class="fa-solid fa-expand"></i>
-              </button>
-              <div class="dropdown">
-                <button class="btn btn-outline-primary btn-action-chart dropdown-toggle" data-bs-toggle="dropdown" title="Ekspor Data">
-                  <i class="fa-solid fa-download"></i>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end shadow">
-                  <li><a class="dropdown-item small" href="javascript:void(0)"
-                      onclick="downloadChartPNG('chartJenis', 'Jenis_Penilaian')"><i class="fa-solid fa-image text-primary me-2"></i>Gambar
-                      (.PNG)</a></li>
-                  <li><a class="dropdown-item small" href="javascript:void(0)"
-                      onclick="downloadChartCSV('chartJenis', 'Jenis_Penilaian')"><i class="fa-solid fa-file-csv text-success me-2"></i>Data
-                      (.CSV)</a></li>
-                  <li><a class="dropdown-item small" href="javascript:void(0)"
-                      onclick="downloadChartPDF('chartJenis', 'Proporsi Jenis Penilaian')"><i class="fa-solid fa-file-pdf text-danger me-2"></i>Cetak
-                      Laporan (.PDF)</a></li>
-                </ul>
-              </div>
+              <button class="btn btn-outline-secondary btn-action-chart" onclick="zoomChart('chartJenis', 'Proporsi Jenis Penilaian')"><i class="fa-solid fa-expand"></i></button>
             </div>
           </div>
-          <div style="position: relative; height: 280px;">
-            <canvas id="chartJenis"></canvas>
-          </div>
+          <div style="position: relative; height: 280px;"><canvas id="chartJenis"></canvas></div>
         </div>
       </div>
 
-      <!-- 4. KORELASI PRESTASI VS KARAKTER & KEHADIRAN -->
       <div class="col-lg-6 col-12">
         <div class="card chart-panel-card p-3 shadow-sm h-100">
           <div class="d-flex justify-content-between align-items-center mb-2">
             <div>
-              <h6 class="fw-bold text-dark m-0"><i class="fa-solid fa-users-viewfinder me-1"></i>Korelasi Kehadiran &
-                Karakter</h6>
+              <h6 class="fw-bold text-dark m-0"><i class="fa-solid fa-users-viewfinder me-1"></i>Korelasi Kehadiran & Karakter</h6>
               <small class="text-muted" style="font-size: 11px;">Kedisiplinan hadir dan poin karakter observasi terhadap capaian</small>
             </div>
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-secondary btn-action-chart" onclick="zoomChart('chartKarakterPresensi', 'Korelasi Kehadiran Karakter dan Nilai')" title="Perbesar Tampilan">
-                <i class="fa-solid fa-expand"></i>
-              </button>
-              <div class="dropdown">
-                <button class="btn btn-outline-primary btn-action-chart dropdown-toggle" data-bs-toggle="dropdown" title="Ekspor Data">
-                  <i class="fa-solid fa-download"></i>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end shadow">
-                  <li><a class="dropdown-item small" href="javascript:void(0)"
-                      onclick="downloadChartPNG('chartKarakterPresensi', 'Korelasi_Siswa')"><i class="fa-solid fa-image text-primary me-2"></i>Gambar
-                      (.PNG)</a></li>
-                  <li><a class="dropdown-item small" href="javascript:void(0)"
-                      onclick="downloadChartCSV('chartKarakterPresensi', 'Korelasi_Siswa')"><i class="fa-solid fa-file-csv text-success me-2"></i>Data
-                      (.CSV)</a></li>
-                  <li><a class="dropdown-item small" href="javascript:void(0)"
-                      onclick="downloadChartPDF('chartKarakterPresensi', 'Korelasi Kehadiran Karakter dan Nilai')"><i class="fa-solid fa-file-pdf text-danger me-2"></i>Cetak
-                      Laporan (.PDF)</a></li>
-                </ul>
-              </div>
+              <button class="btn btn-outline-secondary btn-action-chart" onclick="zoomChart('chartKarakterPresensi', 'Korelasi Kehadiran Karakter dan Nilai')"><i class="fa-solid fa-expand"></i></button>
             </div>
           </div>
-          <div style="position: relative; height: 280px;">
-            <canvas id="chartKarakterPresensi"></canvas>
-          </div>
+          <div style="position: relative; height: 280px;"><canvas id="chartKarakterPresensi"></canvas></div>
         </div>
       </div>
     </div>
@@ -566,23 +419,11 @@
           <div style="position: relative; height: 420px; width: 100%;">
             <canvas id="canvasZoomModal"></canvas>
           </div>
-          <!-- Tabel Rincian Data Angka di Bawah Zoom Chart -->
           <div class="table-responsive mt-4">
-            <h6 class="fw-bold text-secondary mb-2"><i class="fa-solid fa-table-list me-1"></i>Tabel Rincian Parameter:
-            </h6>
             <table class="table table-sm table-bordered text-center align-middle" style="font-size: 13px;">
               <thead class="table-light" id="zoomTableThead"></thead>
               <tbody id="zoomTableTbody"></tbody>
             </table>
-          </div>
-        </div>
-        <div class="modal-footer border-top py-2 d-flex justify-content-between">
-          <span class="text-muted small">Format ekspor telah disesuaikan dengan standar pelaporan resmi sekolah.</span>
-          <div class="btn-group btn-group-sm">
-            <button class="btn btn-outline-primary" id="btnZoomPng"><i class="fa-solid fa-image me-1"></i>PNG</button>
-            <button class="btn btn-outline-success" id="btnZoomCsv"><i class="fa-solid fa-file-csv me-1"></i>CSV</button>
-            <button class="btn btn-outline-danger" id="btnZoomPdf"><i class="fa-solid fa-file-pdf me-1"></i>PDF</button>
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
           </div>
         </div>
       </div>
@@ -600,18 +441,6 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body p-4">
-          <div class="alert alert-light border border-danger mb-3 p-3 rounded-3">
-            <div class="d-flex justify-content-between align-items-center">
-              <div>
-                <strong>Status Filter Aktif:</strong>
-                <span class="badge bg-danger ms-1" id="zoomEwsFilterLabel">Semua Risiko</span>
-              </div>
-              <div>
-                <strong>Total Terdeteksi:</strong>
-                <span class="badge bg-dark ms-1" id="zoomEwsCountLabel">0 Siswa</span>
-              </div>
-            </div>
-          </div>
           <div class="table-responsive">
             <table class="table table-hover table-bordered align-middle text-center" style="font-size: 13px;">
               <thead class="table-danger">
@@ -627,21 +456,22 @@
             </table>
           </div>
         </div>
-        <div class="modal-footer border-top py-2 d-flex justify-content-between">
-          <span class="text-muted small">Data tersaring siap digunakan untuk bahan rapat pleno guru & bimbingan konseling.</span>
-          <div class="btn-group btn-group-sm">
-            <button class="btn btn-outline-primary" onclick="downloadEwsPNG()"><i class="fa-solid fa-image me-1"></i>PNG</button>
-            <button class="btn btn-outline-success" onclick="downloadEwsCSV()"><i class="fa-solid fa-file-csv me-1"></i>CSV</button>
-            <button class="btn btn-outline-danger" onclick="downloadEwsPDF()"><i class="fa-solid fa-file-pdf me-1"></i>PDF</button>
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-          </div>
-        </div>
       </div>
     </div>
   </div>
 
-  <!-- JAVASCRIPT LOGIKA BISNIS DASHBOARD -->
   <script>
+    // MASUKKAN URL WEB APP GOOGLE APPS SCRIPT ANDA DI SINI
+    const API_URL = "https://script.google.com/macros/s/AKfycbwn8oNqQJt4qZ-jKz1f5vT_E5Z_w6G9HhU1yK8BvH7P9P9F6c5nQG-Z_u5W4v8Y6B/exec";
+
+    // PEMBARUAN: Memuat Navbar dari file eksternal (GitHub Pages standard)
+    fetch('navbar.html')
+      .then(response => response.text())
+      .then(data => {
+        document.getElementById('nav-placeholder').innerHTML = data;
+      })
+      .catch(error => console.error('Error loading navbar:', error));
+
     // State Global
     let DB = {};
     let cUser = {};
@@ -651,14 +481,12 @@
     let globalEwsRecords = [];
     let activeEwsFilter = 'ALL';
 
-    // State Kontrol Tabel EWS
     let currentEwsPage = 1;
     const pageSizeEws = 10;
-    let sortColEws = 'risiko'; // 'risiko', 'siswa', 'kategori', 'no'
-    let sortAscEws = false; // Default: risiko tertinggi di urutan teratas
+    let sortColEws = 'risiko'; 
+    let sortAscEws = false; 
     let searchEwsQuery = '';
 
-    // Failsafe Timer
     let failsafeTimer = setTimeout(() => {
       let overlay = document.getElementById('loadingOverlay');
       if (overlay) overlay.style.display = 'none';
@@ -676,7 +504,6 @@
       if (failsafeTimer) clearTimeout(failsafeTimer);
     }
 
-    // Inisialisasi Dokumen
     document.addEventListener("DOMContentLoaded", function() {
       try {
         cUser = JSON.parse(sessionStorage.getItem('eduUser') || '{}');
@@ -685,11 +512,10 @@
       }
 
       if (!cUser || (!cUser.name && !cUser.username)) {
-        window.top.location.href = SCRIPT_URL + '?page=login';
+        window.top.location.href = 'login.html'; // Pindah ke HTML statis
         return;
       }
 
-      // Tampilkan Lencana Pengguna RBAC
       let uBadge = document.getElementById('userBadge');
       if (uBadge) {
         if (cUser.role === 'admin') {
@@ -709,21 +535,29 @@
 
     function initData() {
       showL("Sinkronisasi Basis Data Dasbor...");
-      google.script.run
-        .withSuccessHandler(function(res) {
-          DB = res || {};
-          populateFilterDropdowns();
-          refreshDashboardData();
-        })
-        .withFailureHandler(function(err) {
-          hideL();
-          Swal.fire('Koneksi Gagal', err.message, 'error');
-        })
-        .getMasterReferences();
+      // PEMBARUAN: Menggunakan fetch API untuk memanggil REST API (GET)
+      fetch(API_URL + "?action=getMaster", {
+        method: "GET",
+        redirect: "follow"
+      })
+      .then(response => response.json())
+      .then(res => {
+        if (res.success) {
+           DB = res.data || {};
+           populateFilterDropdowns();
+           refreshDashboardData();
+        } else {
+           hideL();
+           Swal.fire('Error', res.message, 'error');
+        }
+      })
+      .catch(err => {
+        hideL();
+        Swal.fire('Koneksi Gagal', 'Gagal memanggil API Server EduRapor.', 'error');
+      });
     }
 
     function populateFilterDropdowns() {
-      // Periode
       let perSelect = document.getElementById('dash_periode');
       let perOpts = '';
       (DB.MasterPeriode || []).forEach(p => {
@@ -732,7 +566,6 @@
       });
       perSelect.innerHTML = perOpts;
 
-      // Kelas
       let klsSelect = document.getElementById('dash_kelas');
       let klsOpts = '<option value="ALL">-- Seluruh Kelas (Analisis Komparatif) --</option>';
       (DB.MasterKelas || []).forEach(k => {
@@ -752,18 +585,27 @@
       showL("Menghitung Agregat STNKM & EWS...");
 
       if (idKls !== 'ALL' && idPer) {
-        google.script.run
-          .withSuccessHandler(function(res) {
-            DB = res || {};
-            currentContext = { kelas: idKls, periode: idPer };
-            renderAllDashboardComponents();
-            hideL();
-          })
-          .withFailureHandler(function(err) {
-            hideL();
-            Swal.fire('Error Jaringan', err.message, 'error');
-          })
-          .getTransactionalDataByContext(idKls, idPer, true);
+        // PEMBARUAN: Menggunakan fetch API untuk mendapatkan data transaksi (GET)
+        fetch(API_URL + `?action=getContext&id_kelas=${idKls}&id_periode=${idPer}&includeP5=true`, {
+           method: "GET",
+           redirect: "follow"
+        })
+        .then(response => response.json())
+        .then(res => {
+           if (res.success) {
+              DB = res.data || {};
+              currentContext = { kelas: idKls, periode: idPer };
+              renderAllDashboardComponents();
+              hideL();
+           } else {
+              hideL();
+              Swal.fire('Error', res.message, 'error');
+           }
+        })
+        .catch(err => {
+           hideL();
+           Swal.fire('Error Jaringan', 'Gagal mengambil data dari server.', 'error');
+        });
       } else {
         currentContext = { kelas: 'ALL', periode: idPer };
         renderAllDashboardComponents();
@@ -778,37 +620,31 @@
       let idKls = currentContext.kelas;
       let idPer = currentContext.periode;
 
-      // Filter Siswa Sesuai Konteks Kelas
       let listSiswa = (DB.MasterSiswa || []).filter(s => (idKls === 'ALL' || String(s.id_kelas).trim() === String(idKls).trim()));
       let listMapel = DB.MasterMapel || [];
       let listGuru = DB.MasterGuru || [];
 
-      // Filter TransNilai Sesuai Kelas & Periode
       let listNilai = (DB.TransNilai || []).filter(n => 
         (idKls === 'ALL' || String(n.id_kelas).trim() === String(idKls).trim()) &&
         (!idPer || String(n.id_periode).trim() === String(idPer).trim())
       );
 
-      // Filter TransPresensi Sesuai Kelas & Periode
       let listPresensi = (DB.TransPresensi || []).filter(p => 
         (idKls === 'ALL' || String(p.id_kelas).trim() === String(idKls).trim()) &&
         (!idPer || String(p.id_periode).trim() === String(idPer).trim())
       );
 
-      // Filter TransJurnal Sesuai Kelas (melalui id_siswa)
       let listJurnal = (DB.TransJurnal || []).filter(j => {
         let s = (DB.MasterSiswa || []).find(sis => String(sis.id_siswa) === String(j.id_siswa));
         return (idKls === 'ALL' || (s && String(s.id_kelas).trim() === String(idKls).trim()));
       });
 
-      // --------------------------------------------------------
       // 1. UPDATE KARTU BARIS 1: OPERASIONAL KELAS
-      // --------------------------------------------------------
       document.getElementById('d_siswa').innerText = listSiswa.length;
       document.getElementById('d_guru').innerText = listGuru.length;
       document.getElementById('d_mapel').innerText = listMapel.length;
       document.getElementById('d_nilai').innerText = listNilai.length;
-      document.getElementById('d_jurnal').innerText = listJurnal.length; // Entri Jurnal Riil
+      document.getElementById('d_jurnal').innerText = listJurnal.length;
 
       let totalPresensi = listPresensi.length;
       let totalHadir = listPresensi.filter(p => {
@@ -818,9 +654,7 @@
       let persenPresensi = totalPresensi > 0 ? Math.round((totalHadir / totalPresensi) * 100) : 0;
       document.getElementById('d_presensi').innerText = `${persenPresensi}%`;
 
-      // --------------------------------------------------------
       // 2. UPDATE KARTU BARIS 2: RATA-RATA NILAI KELAS
-      // --------------------------------------------------------
       let sumNilai = listNilai.reduce((acc, cur) => acc + (parseFloat(cur.nilai) || 0), 0);
       let avgNilai = listNilai.length > 0 ? parseFloat((sumNilai / listNilai.length).toFixed(1)) : 0;
       document.getElementById('d_avg').innerText = avgNilai;
@@ -835,9 +669,7 @@
         elAvgStat.className = (avgNilai >= kkmSekolah && avgNilai > 0) ? 'badge bg-success' : 'badge bg-danger';
       }
 
-      // --------------------------------------------------------
       // 3. UPDATE KARTU BARIS 2: RATA-RATA STNKM AKADEMIK (TransNilai)
-      // --------------------------------------------------------
       let cntNilai = listNilai.length;
       if (cntNilai > 0) {
         let totS = 0, totT = 0, totN = 0, totK = 0, totM = 0;
@@ -863,7 +695,6 @@
         document.getElementById('d_stnkm_aka_k').innerText = avgK;
         document.getElementById('d_stnkm_aka_m').innerText = avgM;
       } else {
-        // Murni 0 jika belum ada asesmen akademik
         document.getElementById('d_stnkm_aka_avg').innerText = '0';
         document.getElementById('d_stnkm_aka_s').innerText = '0';
         document.getElementById('d_stnkm_aka_t').innerText = '0';
@@ -872,9 +703,7 @@
         document.getElementById('d_stnkm_aka_m').innerText = '0';
       }
 
-      // --------------------------------------------------------
       // 4. UPDATE KARTU BARIS 2: RATA-RATA STNKM JURNAL (TransJurnal)
-      // --------------------------------------------------------
       let cntJurnal = listJurnal.length;
       if (cntJurnal > 0) {
         let totS = 0, totT = 0, totN = 0, totK = 0, totM = 0;
@@ -901,7 +730,6 @@
         document.getElementById('d_stnkm_jur_k').innerText = fmtPoint(avgK);
         document.getElementById('d_stnkm_jur_m').innerText = fmtPoint(avgM);
       } else {
-        // Murni 0 jika belum ada catatan jurnal
         document.getElementById('d_stnkm_jur_avg').innerText = '0 Pts';
         document.getElementById('d_stnkm_jur_s').innerText = '0';
         document.getElementById('d_stnkm_jur_t').innerText = '0';
@@ -910,7 +738,6 @@
         document.getElementById('d_stnkm_jur_m').innerText = '0';
       }
 
-      // Render Modul Lanjutan
       buildAndRenderEWS(listSiswa, listNilai, listPresensi, listJurnal);
       populateStnkmSiswaDropdown(listSiswa);
       renderChartLineSTNKM();
@@ -921,7 +748,6 @@
       renderStudentPillList(listSiswa);
     }
 
-    // Mengisi dropdown pilihan siswa untuk grafik garis progres STNKM
     function populateStnkmSiswaDropdown(siswaList) {
       let sel = document.getElementById('line_stnkm_siswa');
       let valSebelum = sel.value;
@@ -936,7 +762,7 @@
     }
 
     // ========================================================
-    // MODUL 1: SISTEM PERINGATAN DINI (EWS) DENGAN ZOOM & EKSPOR
+    // MODUL 1: SISTEM PERINGATAN DINI (EWS)
     // ========================================================
     function buildAndRenderEWS(siswaList, nilaiList, presensiList, jurnalList) {
       globalEwsRecords = [];
@@ -949,7 +775,7 @@
         let idSis = String(s.id_siswa);
         let namaSis = s.nama_siswa || 'Siswa';
         let issues = [];
-        let riskScore = 0; // 1: Waspada, 2: Perhatian, 3: Bahaya
+        let riskScore = 0; 
 
         // A. Cek Risiko Akademik
         let sNilai = nilaiList.filter(n => String(n.id_siswa) === idSis);
@@ -996,7 +822,7 @@
           });
         }
 
-        // C. Cek Risiko Karakter / Observasi Perilaku Jurnal
+        // C. Cek Risiko Karakter 
         let sJur = jurnalList.filter(j => String(j.id_siswa) === idSis);
         let negJur = sJur.filter(j => 
           String(j.mode_dampak).toUpperCase() === 'INTERVENSI' || 
@@ -1093,7 +919,8 @@
       data.forEach((r, idx) => {
         let listDesc = r.issues.map(iss => `<div class="mb-1">&bull; <span class="badge bg-secondary" style="font-size:10px;">${iss.kategori}</span> ${iss.deskripsi}</div>`).join('');
         let kategoriBadges = r.kategoriList.map(k => `<span class="badge bg-dark me-1" style="font-size:10px;">${k}</span>`).join('');
-
+        
+        // PEMBARUAN: Routing URL menuju HTML statis GitHub Pages
         rows += `
           <tr>
             <td class="fw-bold">${idx + 1}</td>
@@ -1105,7 +932,7 @@
             <td>${kategoriBadges}</td>
             <td class="text-start" style="font-size: 12px;">${listDesc}</td>
             <td>
-              <a href="${SCRIPT_URL}?page=profil&tipe=siswa&id=${r.id_siswa}" target="_top" class="btn btn-sm btn-outline-danger fw-bold rounded-pill">
+              <a href="profil.html?tipe=siswa&id=${r.id_siswa}" target="_top" class="btn btn-sm btn-outline-danger fw-bold rounded-pill">
                 <i class="fa-solid fa-user-pen me-1"></i> Bimbing
               </a>
             </td>
@@ -1116,7 +943,7 @@
     }
 
     // ========================================================
-    // FITUR UNDUH & ZOOM TABEL EWS (SESUAI FILTER AKTIF)
+    // FITUR UNDUH & ZOOM TABEL EWS
     // ========================================================
     function zoomEWS() {
       let data = getFilteredEwsData();
@@ -1330,17 +1157,14 @@
         return Swal.fire('Informasi', 'Tidak ada data siswa berisiko untuk disimpan sebagai gambar.', 'info');
       }
 
-      // Buat kanvas virtual untuk merender ringkasan visual EWS
       let offCanvas = document.createElement('canvas');
       offCanvas.width = 900;
       offCanvas.height = 550;
       let ctx = offCanvas.getContext('2d');
 
-      // Latar belakang
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, offCanvas.width, offCanvas.height);
 
-      // Header Kotak
       ctx.fillStyle = '#dc3545';
       ctx.fillRect(0, 0, offCanvas.width, 70);
 
@@ -1355,7 +1179,6 @@
       let namaKelas = kelasObj ? kelasObj.nama_kelas : "Semua Kelas";
       ctx.fillText(`Konteks Kelas: ${namaKelas} | Filter: ${activeEwsFilter} | Tanggal: ${new Date().toLocaleDateString('id-ID')}`, 25, 105);
 
-      // Garis pemisah
       ctx.strokeStyle = '#eeeeee';
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -1363,7 +1186,6 @@
       ctx.lineTo(875, 120);
       ctx.stroke();
 
-      // Render Baris Siswa (Maks 8 baris cuplikan)
       let y = 150;
       ctx.font = 'bold 12px sans-serif';
       ctx.fillStyle = '#666666';
@@ -1384,7 +1206,6 @@
         ctx.font = 'bold 12px sans-serif';
         ctx.fillText(r.nama_siswa.substring(0, 28), 70, y + 6);
 
-        // Badge level
         ctx.fillStyle = r.riskScore === 3 ? '#dc3545' : (r.riskScore === 2 ? '#ffc107' : '#0dcaf0');
         ctx.fillText(r.tingkatan, 330, y + 6);
 
@@ -1411,10 +1232,7 @@
     }
 
     // ========================================================
-    // PENGEMBANGAN 2: GRAFIK PROGRES STNKM (5 GARIS - KONTINU SEPANJANG WAKTU)
-    // ========================================================
-    // ========================================================
-    // FUNGSI PROGRES STNKM (MURNI DATA RIIL TRANSNILAI & TRANSJURNAL)
+    // FUNGSI PROGRES STNKM
     // ========================================================
     function renderChartLineSTNKM() {
       let canvas = document.getElementById('chartLineSTNKM');
@@ -1422,16 +1240,14 @@
       let ctx = canvas.getContext('2d');
       if (chartInstances['chartLineSTNKM']) chartInstances['chartLineSTNKM'].destroy();
 
-      // 1. Ambil Parameter Filter
       let elSumber = document.getElementById('line_stnkm_sumber');
-      let sumberData = elSumber ? elSumber.value : 'AKADEMIK'; // 'AKADEMIK' atau 'JURNAL'
+      let sumberData = elSumber ? elSumber.value : 'AKADEMIK';
       let subjekSiswa = document.getElementById('line_stnkm_siswa').value;
-      let timeMode = document.getElementById('line_stnkm_time').value; // 'daily', 'weekly', 'monthly'
+      let timeMode = document.getElementById('line_stnkm_time').value;
 
       let idKls = currentContext.kelas;
       let idPer = currentContext.periode;
 
-      // 2. Filter Sumber Data Riil Sesuai Konteks
       let datasetRiil = [];
       if (sumberData === 'AKADEMIK') {
         datasetRiil = (DB.TransNilai || []).filter(n => 
@@ -1442,7 +1258,6 @@
           datasetRiil = datasetRiil.filter(n => String(n.id_siswa) === String(subjekSiswa));
         }
       } else {
-        // Sumber JURNAL
         datasetRiil = (DB.TransJurnal || []).filter(j => {
           let s = (DB.MasterSiswa || []).find(sis => String(sis.id_siswa) === String(j.id_siswa));
           return (idKls === 'ALL' || (s && String(s.id_kelas).trim() === String(idKls).trim()));
@@ -1452,29 +1267,26 @@
         }
       }
 
-      // 3. Susun Sumbu Waktu Horizontal
       let timeLabels = [];
       let dateBins = [];
 
-      // Deteksi Semester (Ganjil: Jul-Des, Genap: Jan-Jun)
       let perObj = (DB.MasterPeriode || []).find(p => String(p.id_periode) === String(idPer));
       let isGenap = perObj && String(perObj.semester).toLowerCase().includes('genap');
 
       if (timeMode === 'monthly') {
         if (isGenap) {
           timeLabels = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'];
-          dateBins = [0, 1, 2, 3, 4, 5]; // getMonth() index
+          dateBins = [0, 1, 2, 3, 4, 5];
         } else {
           timeLabels = ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-          dateBins = [6, 7, 8, 9, 10, 11]; // getMonth() index
+          dateBins = [6, 7, 8, 9, 10, 11];
         }
       } else if (timeMode === 'weekly') {
         for (let w = 1; w <= 16; w++) {
           timeLabels.push(`Minggu ke-${w}`);
           dateBins.push(w);
         }
-      } else { // daily
-        // Cari rentang tanggal riil atau rentang 30 hari berjalan
+      } else {
         let rawDates = datasetRiil.map(d => d.tanggal).filter(t => t);
         let minDate = new Date();
         minDate.setDate(minDate.getDate() - 30);
@@ -1499,7 +1311,6 @@
         }
       }
 
-      // 4. Kalkulasi Data STNKM Murni (Tanpa Forward-Fill / Tanpa Random)
       let seriesS = [], seriesT = [], seriesN = [], seriesK = [], seriesM = [];
 
       timeLabels.forEach((lbl, idx) => {
@@ -1521,7 +1332,7 @@
             let wNum = Math.ceil(d.getDate() / 7) + (d.getMonth() % 4 * 4);
             return wNum === targetWeek;
           });
-        } else { // daily
+        } else {
           let targetIso = dateBins[idx];
           matchedRecords = datasetRiil.filter(r => {
             if (!r.tanggal) return false;
@@ -1531,7 +1342,6 @@
           });
         }
 
-        // Jika tidak ada asesmen/kegiatan pada periode ini, nilainya adalah NOL (0)
         if (matchedRecords.length === 0) {
           seriesS.push(0);
           seriesT.push(0);
@@ -1544,14 +1354,12 @@
 
           matchedRecords.forEach(rec => {
             if (sumberData === 'AKADEMIK') {
-              // Ambil dari kolom poin_S s.d. poin_M tabel TransNilai
               totS += parseFloat(rec.poin_S !== undefined && rec.poin_S !== null && rec.poin_S !== '' ? rec.poin_S : (rec.nilai || 0));
               totT += parseFloat(rec.poin_T !== undefined && rec.poin_T !== null && rec.poin_T !== '' ? rec.poin_T : (rec.nilai || 0));
               totN += parseFloat(rec.poin_N !== undefined && rec.poin_N !== null && rec.poin_N !== '' ? rec.poin_N : (rec.nilai || 0));
               totK += parseFloat(rec.poin_K !== undefined && rec.poin_K !== null && rec.poin_K !== '' ? rec.poin_K : (rec.nilai || 0));
               totM += parseFloat(rec.poin_M !== undefined && rec.poin_M !== null && rec.poin_M !== '' ? rec.poin_M : (rec.nilai || 0));
             } else {
-              // Ambil dari kolom val_S s.d. val_M tabel TransJurnal
               totS += parseFloat(rec.val_S || 0);
               totT += parseFloat(rec.val_T || 0);
               totN += parseFloat(rec.val_N || 0);
@@ -1568,7 +1376,6 @@
         }
       });
 
-      // 5. Konfigurasi Sumbu Y Berdasarkan Sumber
       let yAxisConfig = {
         beginAtZero: true,
         grid: { color: 'rgba(0,0,0,0.06)' }
@@ -1579,7 +1386,6 @@
         yAxisConfig.ticks = { stepSize: 10 };
       }
 
-      // 6. Inisialisasi Chart.js
       chartInstances['chartLineSTNKM'] = new Chart(ctx, {
         type: 'line',
         data: {
@@ -1737,21 +1543,16 @@
       });
     }
 
-    // ========================================================
-    // FUNGSI CAPAIAN PER MAPEL (MURNI DATA RIIL & ANTI-DUPLIKASI)
-    // ========================================================
     function renderChartMapel(mapelList, nilaiList) {
       let canvas = document.getElementById('chartMapel');
       if (!canvas) return;
       let ctx = canvas.getContext('2d');
       if (chartInstances['chartMapel']) chartInstances['chartMapel'].destroy();
 
-      let idKls = currentContext.kelas; // 'ALL' atau ID Kelas spesifik
+      let idKls = currentContext.kelas;
 
-      // 1. Tentukan Mata Pelajaran Relevan Sesuai Konteks Kelas
       let daftarMapelRelevan = [];
       if (idKls !== 'ALL') {
-        // Ambil mapel yang memiliki materi di kelas ini atau mapel yang sudah ada nilainya
         let mapelIdsKelas = new Set();
         (DB.MasterMateri || []).forEach(m => {
           if (String(m.id_kelas).trim() === String(idKls).trim()) {
@@ -1763,7 +1564,6 @@
         });
 
         daftarMapelRelevan = (mapelList || []).filter(m => mapelIdsKelas.has(String(m.id_mapel).trim()));
-        // Fallback: Jika belum ada materi terdaftar untuk kelas ini, ambil mapelList unik
         if (daftarMapelRelevan.length === 0) {
           daftarMapelRelevan = (mapelList || []);
         }
@@ -1771,7 +1571,6 @@
         daftarMapelRelevan = (mapelList || []);
       }
 
-      // 2. Deduplikasi Mapel Berdasarkan Nama (Menghindari Bahasa Indonesia muncul berulang kali)
       let mapelUnikMap = new Map();
       daftarMapelRelevan.forEach(m => {
         let namaBersih = (m.nama_mapel || '').trim();
@@ -1788,7 +1587,6 @@
         }
       });
 
-      // 3. Hitung Rata-rata Murni dari TransNilai (Tanpa Angka Acak / Random)
       let labels = [];
       let dataAvg = [];
       let kkmLine = [];
@@ -1800,7 +1598,6 @@
         let targetKkm = item.kkm;
         kkmLine.push(targetKkm);
 
-        // Kumpulkan seluruh nilai yang cocok dengan ID mapel item ini
         let matchedNilai = (nilaiList || []).filter(n => item.id_mapel_list.includes(String(n.id_mapel).trim()));
 
         if (matchedNilai.length > 0) {
@@ -1808,23 +1605,20 @@
           let avg = parseFloat((sum / matchedNilai.length).toFixed(1));
           dataAvg.push(avg);
 
-          // Skema warna berdasarkan capaian terhadap KKM
           if (avg >= targetKkm) {
-            barColors.push('rgba(25, 135, 84, 0.75)'); // Hijau: Tuntas KKM
+            barColors.push('rgba(25, 135, 84, 0.75)');
             borderColors.push('#198754');
           } else {
-            barColors.push('rgba(220, 53, 69, 0.75)'); // Merah: Di bawah KKM
+            barColors.push('rgba(220, 53, 69, 0.75)');
             borderColors.push('#dc3545');
           }
         } else {
-          // MURNI NOL JIKA BELUM ADA DATA DI TRANSNILAI
           dataAvg.push(0);
-          barColors.push('rgba(222, 226, 230, 0.6)'); // Abu-abu: Belum Ada Data
+          barColors.push('rgba(222, 226, 230, 0.6)');
           borderColors.push('#adb5bd');
         }
       });
 
-      // 4. Inisialisasi Chart.js
       chartInstances['chartMapel'] = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -1903,7 +1697,6 @@
       let ctx = canvas.getContext('2d');
       if (chartInstances['chartJenis']) chartInstances['chartJenis'].destroy();
 
-      // Wadah 4 Pilar Makro
       let kelompok = {
         'Formatif': 0,
         'Sumatif': 0,
@@ -1912,11 +1705,9 @@
       };
 
       (nilaiList || []).forEach(n => {
-        // Cari nama kategori penilaian dari MasterMBK
         let mbk = (DB.MasterMBK || []).find(x => String(x.id_jenis).trim() === String(n.id_jenis).trim());
         let nama = (mbk ? (mbk.kategori_penilaian || mbk.nama_jenis) : '').toLowerCase();
 
-        // Aturan Mapping Cerdas Berdasarkan Kata Kunci
         if (nama.includes('sumatif') || nama.includes('pas') || nama.includes('pts') || nama.includes('uas') || nama.includes('uts')) {
           kelompok['Sumatif']++;
         } else if (nama.includes('p5') || nama.includes('proyek') || nama.includes('profil')) {
@@ -1924,7 +1715,6 @@
         } else if (nama.includes('tugas') || nama.includes('mandiri') || nama.includes('pr') || nama.includes('portofolio')) {
           kelompok['Tugas Mandiri']++;
         } else {
-          // Default: Ulangan Harian, Kuis, Latihan, Formatif, dsb.
           kelompok['Formatif']++;
         }
       });
@@ -1933,7 +1723,6 @@
       let vals = Object.values(kelompok);
       let totalData = vals.reduce((a, b) => a + b, 0);
 
-      // Jika belum ada nilai sama sekali
       let isDataKosong = (totalData === 0);
       if (isDataKosong) {
         lbls = ['Belum Ada Entri Nilai'];
@@ -1948,7 +1737,7 @@
             data: vals,
             backgroundColor: isDataKosong 
               ? ['#e9ecef'] 
-              : ['#0d6efd', '#dc3545', '#ffc107', '#198754'], // Biru (Formatif), Merah (Sumatif), Kuning (Tugas), Hijau (P5)
+              : ['#0d6efd', '#dc3545', '#ffc107', '#198754'],
             borderColor: '#ffffff',
             borderWidth: 2
           }]
@@ -1975,9 +1764,6 @@
       });
     }
 
-    // ========================================================
-    // FUNGSI KORELASI PRESTASI, KEHADIRAN & KARAKTER (MURNI DATA RIIL)
-    // ========================================================
     function renderChartKarakterPresensi(siswaList, nilaiList, presensiList, jurnalList) {
       let canvas = document.getElementById('chartKarakterPresensi');
       if (!canvas) return;
@@ -1989,15 +1775,12 @@
       let hadirData = [];
       let karakterData = [];
 
-      // Tampilkan maksimal 12 siswa untuk menjaga keterbacaan grafik di dasbor
       let sampleSiswa = (siswaList || []).slice(0, 12);
       
       sampleSiswa.forEach(s => {
-        // Ambil nama depan agar sumbu horizontal tidak bertumpuk
         labels.push(s.nama_siswa ? s.nama_siswa.split(' ')[0] : 'Siswa');
         let idSis = String(s.id_siswa);
 
-        // 1. Rata-rata Nilai Akademik Riil dari TransNilai
         let sNil = (nilaiList || []).filter(n => String(n.id_siswa) === idSis);
         let avgN = 0;
         if (sNil.length > 0) {
@@ -2006,7 +1789,6 @@
         }
         nilaiData.push(avgN);
 
-        // 2. Persentase Kehadiran Riil dari TransPresensi
         let sPres = (presensiList || []).filter(p => String(p.id_siswa) === idSis);
         let pHadir = 0;
         if (sPres.length > 0) {
@@ -2018,12 +1800,10 @@
         }
         hadirData.push(pHadir);
 
-        // 3. Indeks Karakter Riil dari TransJurnal (val_K)
         let sJur = (jurnalList || []).filter(j => String(j.id_siswa) === idSis);
         let scoreK = 0;
         if (sJur.length > 0) {
           let sumK = sJur.reduce((a, b) => a + (parseFloat(b.val_K) || 0), 0);
-          // Baseline 75 ditambah akumulasi poin val_K observasi (rentang 50 - 100)
           scoreK = Math.min(100, Math.max(50, Math.round(75 + (sumK * 5))));
         }
         karakterData.push(scoreK);
@@ -2109,8 +1889,9 @@
       }
       let html = '';
       siswaList.forEach(s => {
+        // PEMBARUAN ROUTING HTML STATIS
         html += `
-          <a href="${SCRIPT_URL}?page=profil&tipe=siswa&id=${s.id_siswa}" target="_top" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 shadow-sm fw-semibold">
+          <a href="profil.html?tipe=siswa&id=${s.id_siswa}" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 shadow-sm fw-semibold">
             <i class="fa-solid fa-user me-1 text-secondary"></i> ${s.nama_siswa}
           </a>
         `;
@@ -2342,132 +2123,6 @@
       printWin.document.close();
       hideL();
     }
-
-    // Listener Pencarian EWS
-    function handleEwsSearch(val) {
-    searchEwsQuery = (val || '').toLowerCase();
-    currentEwsPage = 1;
-    renderFilteredEwsTable();
-    }
-
-    // Listener Pengurutan Kolom Header EWS
-    function sortEwsTable(col) {
-    if (sortColEws === col) {
-    sortAscEws = !sortAscEws;
-    } else {
-    sortColEws = col;
-    sortAscEws = (col === 'siswa' || col === 'no'); // Default alfabetik ASC, risiko DESC
-    }
-    renderFilteredEwsTable();
-    }
-
-    // Listener Paginasi EWS
-    function changeEwsPage(delta) {
-    currentEwsPage += delta;
-    renderFilteredEwsTable();
-    }
-
-    // Fungsi Pengambil Data Tersaring EWS (Digunakan oleh Render, Zoom, & Ekspor)
-    function getFilteredEwsData() {
-    let data = globalEwsRecords.slice();
-
-    // 1. Filter Kategori Tab
-    if (activeEwsFilter !== 'ALL') {
-    data = data.filter(r => r.kategoriList.includes(activeEwsFilter));
-    }
-
-    // 2. Filter Pencarian Teks
-    if (searchEwsQuery) {
-    data = data.filter(r => {
-    let nm = (r.nama_siswa || '').toLowerCase();
-    let nisn = String(r.id_siswa || '').toLowerCase();
-    let kat = r.kategoriList.join(' ').toLowerCase();
-    let iss = r.issues.map(x => x.deskripsi).join(' ').toLowerCase();
-    return nm.includes(searchEwsQuery) || nisn.includes(searchEwsQuery) || kat.includes(searchEwsQuery) ||
-    iss.includes(searchEwsQuery);
-    });
-    }
-
-    // 3. Pengurutan (Sorting)
-    data.sort((a, b) => {
-    let valA = '', valB = '';
-    if (sortColEws === 'siswa') {
-    valA = (a.nama_siswa || '').toLowerCase();
-    valB = (b.nama_siswa || '').toLowerCase();
-    return sortAscEws ? valA.localeCompare(valB) : valB.localeCompare(valA);
-    } else if (sortColEws === 'risiko') {
-    valA = a.riskScore || 0;
-    valB = b.riskScore || 0;
-    return sortAscEws ? (valA - valB) : (valB - valA);
-    } else if (sortColEws === 'kategori') {
-    valA = a.kategoriList.join(', ');
-    valB = b.kategoriList.join(', ');
-    return sortAscEws ? valA.localeCompare(valB) : valB.localeCompare(valA);
-    }
-    return 0;
-    });
-
-    return data;
-    }
-
-    // Render Tabel EWS Berhalaman (Paginated)
-    function renderFilteredEwsTable() {
-    let tbody = document.getElementById('ewsTableBody');
-    let data = getFilteredEwsData();
-
-    if (data.length === 0) {
-    tbody.innerHTML = `
-    <tr>
-      <td colspan="6" class="text-center py-4 text-success fw-bold">
-        <i class="fa-solid fa-circle-check fa-2x mb-2 d-block"></i>
-        Tidak ada siswa terdeteksi dalam kriteria ini.
-      </td>
-    </tr>
-    `;
-    document.getElementById('pageIndicatorEws').innerText = 'Halaman 1 dari 1';
-    document.getElementById('btnPrevEws').disabled = true;
-    document.getElementById('btnNextEws').disabled = true;
-    return;
-    }
-
-    // Logika Paginasi
-    let totalData = data.length;
-    let totalPages = Math.ceil(totalData / pageSizeEws) || 1;
-    if (currentEwsPage > totalPages) currentEwsPage = totalPages;
-    if (currentEwsPage < 1) currentEwsPage=1; let start=(currentEwsPage - 1) * pageSizeEws; let pageData=data.slice(start,
-      start + pageSizeEws); let rows='' ; pageData.forEach((r, idx)=> {
-      let realIndex = start + idx + 1;
-      let listDesc = r.issues.map(iss => `<div class="mb-1">&bull;
-        <span class="badge bg-secondary" style="font-size:10px;">${iss.kategori}</span> ${iss.deskripsi}</div>`).join('');
-      let kategoriBadges = r.kategoriList.map(k =>
-      `<span class="badge bg-dark me-1" style="font-size:10px;">${k}</span>`).join('');
-
-      rows += `
-      <tr>
-        <td class="fw-bold">${realIndex}</td>
-        <td class="text-start">
-          <span class="fw-bold text-dark">${r.nama_siswa}</span>
-          <br><small class="text-muted">NISN: ${r.id_siswa}</small>
-        </td>
-        <td><span class="badge badge-pill-custom ${r.badgeClass}">${r.tingkatan}</span></td>
-        <td>${kategoriBadges}</td>
-        <td class="text-start" style="font-size: 12px;">${listDesc}</td>
-        <td>
-          <a href="${SCRIPT_URL}?page=profil&tipe=siswa&id=${r.id_siswa}" target="_top"
-            class="btn btn-sm btn-outline-danger fw-bold rounded-pill">
-            <i class="fa-solid fa-user-pen me-1"></i> Bimbing
-          </a>
-        </td>
-      </tr>
-      `;
-      });
-
-      tbody.innerHTML = rows;
-      document.getElementById('pageIndicatorEws').innerText = `Halaman ${currentEwsPage} dari ${totalPages} (Total:
-      ${totalData} Siswa)`;
-      document.getElementById('btnPrevEws').disabled = (currentEwsPage === 1);
-      document.getElementById('btnNextEws').disabled = (currentEwsPage === totalPages);
-      }
   </script>
 </body>
 
