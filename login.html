@@ -5,90 +5,90 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login - EduRapor</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <style>
-    body { background-color: #f4f6f9; font-family: sans-serif; }
-    #loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 9999; display: none; flex-direction: column; justify-content: center; align-items: center; }
+    body { background-color: #f0f2f5; display: flex; align-items: center; height: 100vh; }
+    .login-card { border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
   </style>
 </head>
 <body>
 
-  <div id="loadingOverlay">
-    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div>
-    <h5 class="mt-3 text-muted" id="loadingText">Verifikasi...</h5>
-  </div>
-
-  <div class="d-flex align-items-center justify-content-center min-vh-100">
-    <div class="card p-5 shadow" style="width: 100%; max-width: 400px;">
-      <h3 class="text-center fw-bold text-primary mb-4">EduRapor v6</h3>
-      <form onsubmit="handleLogin(event)">
-        <div class="mb-3">
-          <label class="fw-bold">Login Sebagai</label>
-          <select class="form-select" id="logRole">
-            <option value="admin">Admin</option>
-            <option value="kepsek">Kepala Sekolah</option>
-            <option value="guru">Guru</option>
-            <option value="siswa">Siswa</option>
-          </select>
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-md-5 col-lg-4">
+        <div class="card login-card p-4 border-0">
+          <div class="text-center mb-4">
+            <h3 class="fw-bold text-primary"><i class="fa-solid fa-graduation-cap"></i> EduRapor</h3>
+            <p class="text-muted small">Headless API Edition</p>
+          </div>
+          
+          <form id="loginForm" onsubmit="handleLogin(event)">
+            <div class="mb-3">
+              <label class="form-label fw-bold small">Hak Akses</label>
+              <select class="form-select border-secondary" id="l_role">
+                <option value="guru">Guru / Administrator</option>
+                <option value="siswa">Peserta Didik</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold small">Username / NISN</label>
+              <input type="text" class="form-control border-secondary" id="l_user" required>
+            </div>
+            <div class="mb-4">
+              <label class="form-label fw-bold small">Password</label>
+              <input type="password" class="form-control border-secondary" id="l_pass" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100 fw-bold" id="btnLogin">
+              Masuk Sistem <i class="fa-solid fa-arrow-right ms-2"></i>
+            </button>
+          </form>
         </div>
-        <div class="mb-3">
-          <label class="fw-bold">ID / Username</label>
-          <input type="text" class="form-control" id="logUser" required>
-        </div>
-        <div class="mb-4">
-          <label class="fw-bold">Password</label>
-          <input type="password" class="form-control" id="logPass" required>
-        </div>
-        <button type="submit" class="btn btn-primary w-100">Masuk</button>
-      </form>
+      </div>
     </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script>
-    // 1. Menangkap URL aplikasi dinamis dari Backend
-    const SCRIPT_URL = "<?= scriptUrl ?>";
+    // MASUKKAN URL WEB APP GOOGLE APPS SCRIPT ANDA DI SINI
+    const API_URL = "https://script.google.com/macros/s/AKfycbyDbShWPCX2Bi55XhFNRZ0d2itqfxIM9hEmwLPLaRa-jfDwDlFTMnrqmFrS7Fi2c5JI/exec"; 
 
-    // 2. Cek Sesi: Jika user sudah login (sesi belum dihapus browser), langsung lompat ke dashboard
-    if (sessionStorage.getItem('eduUser')) {
-       window.top.location.href = SCRIPT_URL + "?page=dashboard";
-    }
-
-    function showL(t="Memproses...") { 
-      document.getElementById('loadingText').innerText = t; 
-      document.getElementById('loadingOverlay').style.display = 'flex'; 
-    }
-    
-    function hideL() { 
-      document.getElementById('loadingOverlay').style.display = 'none'; 
-    }
-
-    // 3. Eksekusi Login
     function handleLogin(e) {
-      e.preventDefault(); 
-      showL("Verifikasi Data...");
-      
-      let u = document.getElementById('logUser').value;
-      let p = document.getElementById('logPass').value;
-      let r = document.getElementById('logRole').value;
+      e.preventDefault();
+      let btn = document.getElementById('btnLogin');
+      let user = document.getElementById('l_user').value.trim();
+      let pass = document.getElementById('l_pass').value.trim();
+      let role = document.getElementById('l_role').value;
 
-      google.script.run
-        .withSuccessHandler(res => {
-          if(res.success) {
-            // TAHAP MANAJEMEN SESI: Simpan data kredensial di penyimpanan sementara browser
-            sessionStorage.setItem('eduUser', JSON.stringify(res));
-            
-            // REDIRECT URL: Arahkan ke halaman dasbor
-            window.top.location.href = SCRIPT_URL + "?page=dashboard";
-          } else { 
-            hideL(); 
-            Swal.fire({icon:'error', title: 'Gagal', text: res.message}); 
-          }
-        })
-        .withFailureHandler(err => { 
-          hideL(); 
-          Swal.fire('Error Database', err.message, 'error'); 
-        })
-        .verifyUser(u, p, r);
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Memverifikasi...';
+
+      let payload = { u: user, p: pass, r: role };
+
+      fetch(API_URL + "?action=verifyUser", {
+        method: "POST",
+        redirect: "follow", // Mengikuti redirect dari server Google
+        headers: { "Content-Type": "text/plain;charset=utf-8" }, // Hindari pemblokiran CORS
+        body: JSON.stringify(payload)
+      })
+      .then(response => response.json())
+      .then(res => {
+        btn.disabled = false;
+        btn.innerHTML = 'Masuk Sistem <i class="fa-solid fa-arrow-right ms-2"></i>';
+        
+        if (res.success) {
+          sessionStorage.setItem('eduUser', JSON.stringify(res));
+          Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: `Selamat datang, ${res.name}`, showConfirmButton: false, timer: 2000 });
+          // Redirect ke halaman master untuk testing
+          setTimeout(() => { window.location.href = "master.html"; }, 1500);
+        } else {
+          Swal.fire('Akses Ditolak', res.message, 'error');
+        }
+      })
+      .catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = 'Masuk Sistem <i class="fa-solid fa-arrow-right ms-2"></i>';
+        Swal.fire('Error Jaringan', 'Gagal terhubung ke API EduRapor.', 'error');
+      });
     }
   </script>
 </body>
