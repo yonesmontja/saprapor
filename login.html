@@ -79,7 +79,7 @@
           sessionStorage.setItem('eduUser', JSON.stringify(res));
           Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: `Selamat datang, ${res.name}`, showConfirmButton: false, timer: 2000 });
           // Redirect ke halaman master untuk testing
-          setTimeout(() => { window.location.href = "master.html"; }, 1500);
+          setTimeout(() => { window.location.href = "dashboard.html"; }, 1500);
         } else {
           Swal.fire('Akses Ditolak', res.message, 'error');
         }
