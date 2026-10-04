@@ -169,11 +169,58 @@
     // MASUKKAN URL WEB APP GOOGLE APPS SCRIPT ANDA DI SINI
     const API_URL = "https://script.google.com/macros/s/AKfycbxJZDVn4r709RLpsd-qaGKPlWuFdY_jl_KPTTUm1LtNO8836u7-IkMvFpwdMmXEUZx_3A/exec"; 
 
-    // Muat Navbar secara asinkron
+    // -------------------------------------------------------------
+    // MESIN NAVIGASI TERPADU (FETCH, RBAC, HIGHLIGHT, LOGOUT)
+    // -------------------------------------------------------------
     fetch('navbar.html')
       .then(response => response.text())
-      .then(data => { document.getElementById('nav-placeholder').innerHTML = data; })
+      .then(data => { 
+        document.getElementById('nav-placeholder').innerHTML = data; 
+        
+        let user = JSON.parse(sessionStorage.getItem('eduUser') || '{}');
+        let role = (user.role || '').toLowerCase();
+        
+        // 1. Logika Hak Akses (RBAC)
+        const hideMenu = (id) => { let el = document.getElementById(id); if(el) el.classList.add('d-none'); };
+        if (role === 'guru' && !user.is_wali_kelas) {
+          hideMenu('menu_catatan_p5'); hideMenu('menu_rapor');
+        } else if (role === 'siswa') {
+          ['menu_master', 'menu_harian', 'menu_presensi', 'menu_jurnal', 'menu_catatan_p5', 'menu_rapor'].forEach(hideMenu);
+        } else if (role === 'kepsek') {
+          hideMenu('menu_master');
+        }
+
+        // 2. Deteksi & Highlight Halaman Aktif
+        let path = window.location.pathname;
+        let currentPage = path.split('/').pop().replace('.html', '') || 'dashboard';
+        if (currentPage === 'profil') currentPage = 'dashboard';
+        
+        let activeNav = document.getElementById('nav_' + currentPage);
+        if (activeNav) {
+          activeNav.classList.add('active');
+          let parentDropdown = activeNav.closest('.dropdown');
+          if (parentDropdown) {
+            parentDropdown.querySelector('.nav-link.dropdown-toggle').classList.add('active');
+            activeNav.classList.add('bg-light');
+          }
+        }
+      })
       .catch(error => console.error('Error loading navbar:', error));
+
+    // Fungsi Logout Global
+    function logout() {
+      Swal.fire({
+        title: 'Akhiri Sesi?', text: "Anda akan keluar dari sistem EduRapor.", icon: 'warning',
+        showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="fa-solid fa-right-from-bracket me-1"></i> Ya, Keluar', cancelButtonText: 'Batal', reverseButtons: true
+      }).then((result) => {
+        if (result.isConfirmed) {
+           sessionStorage.removeItem('eduUser');
+           sessionStorage.removeItem('eduAppState'); 
+           window.location.href = "login.html"; 
+        }
+      });
+    }
 
     let cUser = JSON.parse(sessionStorage.getItem('eduUser'));
     if(!cUser) window.location.href = "login.html";
