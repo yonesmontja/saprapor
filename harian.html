@@ -69,9 +69,8 @@
     <h5 class="mt-3 text-muted fw-bold" id="loadingText">Sinkronisasi Referensi Kelas...</h5>
   </div>
 
-  <!-- Identitas URL & Navigasi Terpadu -->
-  <script>const SCRIPT_URL = "<?= scriptUrl ?>";</script>
-  <?!= include('navbar'); ?>
+  <!-- Wadah Navigasi Dinamis -->
+  <div id="nav-placeholder"></div>
 
   <div class="container mt-4 mb-5">
     
@@ -291,7 +290,10 @@
 
   <!-- SCRIPT LOGIKA BISNIS -->
   <script>
-    // Failsafe Timer: Hilangkan overlay setelah 6 detik jika server lambat
+    // URL API Google Apps Script
+    const API_URL = "https://script.google.com/macros/s/AKfycbwn8oNqQJt4qZ-jKz1f5vT_E5Z_w6G9HhU1yK8BvH7P9P9F6c5nQG-Z_u5W4v8Y6B/exec";
+
+    // Failsafe Timer
     let failsafeTimer = setTimeout(() => {
       let overlay = document.getElementById('loadingOverlay');
       if (overlay) overlay.style.display = 'none';
@@ -327,8 +329,23 @@
       if (failsafeTimer) clearTimeout(failsafeTimer);
     }
 
-    // Inisialisasi Saat Dokumen Siap
+    // Inisialisasi Navigasi Dinamis & Sesi
     document.addEventListener("DOMContentLoaded", function() {
+      fetch('navbar.html')
+        .then(response => response.text())
+        .then(data => {
+          document.getElementById('nav-placeholder').innerHTML = data;
+          initSessionAndRBAC();
+        })
+        .catch(error => console.error('Gagal memuat navbar:', error));
+
+      document.getElementById('b_tgl').value = new Date().toISOString().split('T')[0];
+      document.getElementById('searchInput').addEventListener('input', function(e) {
+        handleSearch(e.target.value);
+      });
+    });
+
+    function initSessionAndRBAC() {
       try {
         cUser = JSON.parse(sessionStorage.getItem('eduUser') || '{}');
       } catch (e) {
@@ -336,13 +353,38 @@
       }
 
       if (!cUser || (!cUser.name && !cUser.username)) {
-        window.top.location.href = SCRIPT_URL + '?page=login';
+        window.location.href = 'login.html';
         return;
+      }
+
+      let role = (cUser.role || '').toLowerCase();
+      const hideMenu = (id) => { let el = document.getElementById(id); if(el) el.classList.add('d-none'); };
+      
+      if (role === 'guru' && !cUser.is_wali_kelas) {
+        hideMenu('menu_catatan_p5'); hideMenu('menu_rapor');
+      } else if (role === 'siswa') {
+        ['menu_master', 'menu_harian', 'menu_presensi', 'menu_jurnal', 'menu_catatan_p5', 'menu_rapor'].forEach(hideMenu);
+      } else if (role === 'kepsek') {
+        hideMenu('menu_master');
+      }
+
+      let path = window.location.pathname;
+      let currentPage = path.split('/').pop().replace('.html', '') || 'dashboard';
+      if (currentPage === 'profil') currentPage = 'dashboard';
+      
+      let activeNav = document.getElementById('nav_' + currentPage);
+      if (activeNav) {
+        activeNav.classList.add('active');
+        let parentDropdown = activeNav.closest('.dropdown');
+        if (parentDropdown) {
+          parentDropdown.querySelector('.nav-link.dropdown-toggle').classList.add('active');
+          activeNav.classList.add('bg-light');
+        }
       }
 
       let uBadge = document.getElementById('userBadge');
       if (uBadge) {
-        if (cUser.role === 'admin') {
+        if (role === 'admin') {
           uBadge.className = 'badge bg-danger px-3 py-2 fs-6 shadow-sm';
           uBadge.innerHTML = `<i class="fa-solid fa-user-shield me-1"></i> ${cUser.name || cUser.username} (Administrator)`;
         } else {
@@ -351,32 +393,45 @@
         }
       }
 
-      document.getElementById('b_tgl').value = new Date().toISOString().split('T')[0];
-
-      document.getElementById('searchInput').addEventListener('input', function(e) {
-        handleSearch(e.target.value);
-      });
-
-      // Muat data master referensi
       loadMasterData();
-    });
-
-    function loadMasterData() {
-      showL("Sinkronisasi Referensi Kelas...");
-      google.script.run
-        .withSuccessHandler(function(res) {
-          DB = res || {};
-          populateDropdowns();
-          hideL();
-        })
-        .withFailureHandler(function(err) {
-          hideL();
-          Swal.fire('Koneksi Gagal', 'Gagal memuat data master: ' + err.message, 'error');
-        })
-        .getMasterReferences(); // Fungsi resmi backend Code.gs
     }
 
-    // Pemeriksaan fleksibel mata pelajaran yang diampu guru
+    // Pembaruan: Tarik data referensi menggunakan fetch()
+    function loadMasterData() {
+      showL("Sinkronisasi Referensi Kelas...");
+      
+      if (!navigator.onLine) {
+         let cachedDB = localStorage.getItem('eduCache_Master');
+         if (cachedDB) {
+             DB = JSON.parse(cachedDB);
+             populateDropdowns();
+             hideL();
+             return;
+         }
+      }
+
+      fetch(API_URL + "?action=getMaster", {
+        method: "GET",
+        redirect: "follow"
+      })
+      .then(response => response.json())
+      .then(res => {
+        if (res.success) {
+           DB = res.data || {};
+           localStorage.setItem('eduCache_Master', JSON.stringify(DB));
+           populateDropdowns();
+           hideL();
+        } else {
+           hideL();
+           Swal.fire('Error', res.message, 'error');
+        }
+      })
+      .catch(err => {
+        hideL();
+        Swal.fire('Koneksi Gagal', 'Gagal memanggil API Server EduRapor.', 'error');
+      });
+    }
+
     function isMapelDiampu(m) {
       if (!cUser || cUser.role === 'admin' || cUser.role === 'kepsek') return true;
       let idGuruMapel = String(m.id_guru || '').trim().toLowerCase();
@@ -392,16 +447,13 @@
       );
     }
 
-    // Mengisi Seluruh Dropdown Filter Utama
     function populateDropdowns() {
-      // 1. Dropdown Kelas
       let klsOpts = '<option value="">- Pilih Kelas -</option>';
       (DB.MasterKelas || []).forEach(k => {
         klsOpts += `<option value="${k.id_kelas}">${k.nama_kelas}</option>`;
       });
       document.getElementById('b_kelas').innerHTML = klsOpts;
 
-      // 2. Dropdown Periode
       let perOpts = '<option value="">- Pilih Periode -</option>';
       (DB.MasterPeriode || []).forEach(p => {
         let sel = (p.is_active === 'Y' || p.is_active === true || p.status_aktif === 'AKTIF') ? 'selected' : '';
@@ -409,14 +461,12 @@
       });
       document.getElementById('b_periode').innerHTML = perOpts;
 
-      // 3. Dropdown Jenis Penilaian
       let jnsOpts = '<option value="">- Pilih Jenis -</option>';
       (DB.MasterMBK || []).forEach(j => {
         jnsOpts += `<option value="${j.id_jenis}">${j.kategori_penilaian}</option>`;
       });
       document.getElementById('b_jenis').innerHTML = jnsOpts;
 
-      // 4. Dropdown Mapel
       updateMapelDropdown();
     }
 
@@ -480,6 +530,7 @@
       }
     }
 
+    // Pembaruan: Panggil data transaksi lewat fetch()
     function onFilterChange() {
       let idKls = document.getElementById('b_kelas').value;
       let idPer = document.getElementById('b_periode').value;
@@ -487,21 +538,45 @@
       updateMateriDropdown();
 
       if (idKls && idPer && (currentContext.kelas !== idKls || currentContext.periode !== idPer)) {
+        
+        if (!navigator.onLine) {
+           let cachedContext = localStorage.getItem(`eduCache_Ctx_${idKls}_${idPer}`);
+           if (cachedContext) {
+              DB = JSON.parse(cachedContext);
+              currentContext = { kelas: idKls, periode: idPer };
+              updateMateriDropdown();
+              renderPaginatedNilai();
+              triggerBatchForm();
+           } else {
+              Swal.fire('Mode Luring', 'Riwayat nilai kelas ini belum pernah dibuka saat Online.', 'warning');
+           }
+           return;
+        }
+
         showL("Menarik Riwayat Nilai Kelas...");
-        google.script.run
-          .withSuccessHandler(function(res) {
-            DB = res || {};
+        fetch(API_URL + `?action=getContext&id_kelas=${idKls}&id_periode=${idPer}`, {
+          method: "GET",
+          redirect: "follow"
+        })
+        .then(response => response.json())
+        .then(res => {
+          if (res.success) {
+            DB = res.data || {};
             currentContext = { kelas: idKls, periode: idPer };
+            localStorage.setItem(`eduCache_Ctx_${idKls}_${idPer}`, JSON.stringify(DB));
             updateMateriDropdown();
             renderPaginatedNilai();
             triggerBatchForm();
             hideL();
-          })
-          .withFailureHandler(function(err) {
+          } else {
             hideL();
-            Swal.fire('Error Jaringan', err.message, 'error');
-          })
-          .getTransactionalDataByContext(idKls, idPer, true);
+            Swal.fire('Error', res.message, 'error');
+          }
+        })
+        .catch(err => {
+          hideL();
+          Swal.fire('Error Jaringan', 'Gagal memanggil API Server EduRapor.', 'error');
+        });
       } else {
         renderPaginatedNilai();
         triggerBatchForm();
@@ -609,7 +684,6 @@
       updateStatistikBatch();
     }
 
-    // TAHAP 2: KALKULASI ANALITIK LIVE & CHART.JS
     function updateStatistikBatch() {
       let idMap = document.getElementById('b_mapel').value;
       let mapelObj = (DB.MasterMapel || []).find(m => String(m.id_mapel) === String(idMap));
@@ -620,10 +694,10 @@
       let filledScores = [];
 
       let countTuntas = 0;
-      let cntSB = 0; // >= 90
-      let cntB = 0;  // 80 - 89
-      let cntC = 0;  // 70 - 79
-      let cntK = 0;  // < 70
+      let cntSB = 0; 
+      let cntB = 0;  
+      let cntC = 0;  
+      let cntK = 0;  
 
       inputs.forEach(inp => {
         let val = inp.value.trim();
@@ -725,7 +799,7 @@
       });
     }
 
-    // Submit Nilai Siswa
+    // Pembaruan: Submit Nilai via REST API
     function handleBatchNilaiSubmit(e) {
       e.preventDefault();
 
@@ -768,36 +842,44 @@
       }
 
       showL("Menyimpan Nilai Kelas ke Database...");
-      google.script.run
-        .withSuccessHandler(function(res) {
-          hideL();
-          if (res && res.success) {
-            Swal.fire({
-              icon: 'success',
-              title: 'Berhasil Disimpan',
-              text: `${payloadRecords.length} baris nilai berhasil disimpan.`,
-              timer: 2000,
-              showConfirmButton: false
-            });
+      
+      let payloadObj = {
+        action: 'saveNilaiBatch',
+        ...payloadRecords // Kirim Array Records
+      };
+      
+      // Kirim Array Records secara langsung dalam body
+      fetch(API_URL + "?action=saveNilaiBatch", {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payloadRecords),
+        redirect: "follow"
+      })
+      .then(response => response.json())
+      .then(res => {
+        hideL();
+        if (res.success) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Berhasil Disimpan',
+            text: `${payloadRecords.length} baris nilai berhasil disimpan.`,
+            timer: 2000,
+            showConfirmButton: false
+          });
 
-            if (isEditModeGlobal) cancelEditMode();
+          if (isEditModeGlobal) cancelEditMode();
 
-            google.script.run
-              .withSuccessHandler(function(newDb) {
-                DB = newDb || {};
-                renderPaginatedNilai();
-                triggerBatchForm();
-              })
-              .getTransactionalDataByContext(idKls, idPer, true);
-          } else {
-            Swal.fire('Gagal Menyimpan', res ? res.message : 'Terjadi kendala server.', 'error');
-          }
-        })
-        .withFailureHandler(function(err) {
-          hideL();
-          Swal.fire('Error Koneksi', err.message, 'error');
-        })
-        .saveBatchNilai(payloadRecords);
+          // Segarkan data konteks setelah sukses
+          currentContext.kelas = null; 
+          onFilterChange();
+        } else {
+          Swal.fire('Gagal Menyimpan', res.message, 'error');
+        }
+      })
+      .catch(err => {
+        hideL();
+        Swal.fire('Error Koneksi', 'Gagal memanggil API Server EduRapor.', 'error');
+      });
     }
 
     // Riwayat Nilai
@@ -976,6 +1058,7 @@
       triggerBatchForm();
     }
 
+    // Pembaruan: Delete Nilai via REST API
     function delNil(idNilai) {
       let rec = (DB.TransNilai || []).find(n => String(n.id_nilai) === String(idNilai));
       if (!rec) return;
@@ -998,34 +1081,34 @@
       }).then((result) => {
         if (result.isConfirmed) {
           showL("Menghapus data nilai...");
-          google.script.run
-            .withSuccessHandler(function(res) {
-              hideL();
-              if (res && res.success) {
-                Swal.fire({ icon: 'success', title: 'Terhapus', text: 'Data nilai berhasil dihapus.', timer: 1500, showConfirmButton: false });
-                let idKls = document.getElementById('b_kelas').value;
-                let idPer = document.getElementById('b_periode').value;
-                google.script.run
-                  .withSuccessHandler(function(newDb) {
-                    DB = newDb || {};
-                    renderPaginatedNilai();
-                    triggerBatchForm();
-                  })
-                  .getTransactionalDataByContext(idKls, idPer, true);
-              } else {
-                Swal.fire('Gagal Menghapus', res ? res.message : 'Kesalahan basis data.', 'error');
-              }
-            })
-            .withFailureHandler(function(err) {
-              hideL();
-              Swal.fire('Error', err.message, 'error');
-            })
-            .deleteMasterData('TransNilai', idNilai, 'id_nilai');
+          
+          let payload = { action: 'deleteMaster', sheetName: 'TransNilai', idValue: idNilai, idField: 'id_nilai' };
+
+          fetch(API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify(payload),
+            redirect: "follow"
+          })
+          .then(response => response.json())
+          .then(res => {
+            hideL();
+            if (res.success) {
+              Swal.fire({ icon: 'success', title: 'Terhapus', text: 'Data nilai berhasil dihapus.', timer: 1500, showConfirmButton: false });
+              currentContext.kelas = null; 
+              onFilterChange();
+            } else {
+              Swal.fire('Gagal Menghapus', res.message, 'error');
+            }
+          })
+          .catch(err => {
+            hideL();
+            Swal.fire('Error', 'Gagal memanggil API Server EduRapor.', 'error');
+          });
         }
       });
     }
 
-    // TAHAP 3: EKSPOR TERPADU (CSV & PDF)
     function exportData(format) {
       let idKls = document.getElementById('b_kelas').value;
       if (!idKls) {
