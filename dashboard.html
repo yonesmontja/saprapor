@@ -1,0 +1,2474 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pusat Analitik & Dasbor Mutu - EduRapor</title>
+
+  <!-- Vendor Stylesheets -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+  <!-- Vendor Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body {
+      background-color: #f4f6f9;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    #loadingOverlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.95);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .metric-card {
+      border: none;
+      border-radius: 16px;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .metric-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+    }
+
+    .chart-panel-card {
+      border: none;
+      border-radius: 16px;
+      transition: box-shadow 0.2s ease;
+      background: #ffffff;
+    }
+
+    .chart-panel-card:hover {
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+    }
+
+    .ews-card {
+      border-left: 5px solid #dc3545 !important;
+      border-radius: 16px;
+    }
+
+    .badge-pill-custom {
+      font-size: 11px;
+      padding: 5px 10px;
+      border-radius: 20px;
+      font-weight: 600;
+    }
+
+    .btn-action-chart {
+      border-radius: 8px;
+      padding: 3px 8px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Layar Pemuat Data -->
+  <div id="loadingOverlay">
+    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div>
+    <h5 class="mt-3 text-muted fw-bold" id="loadingText">Menyiapkan Dasbor Mutu Akademik...</h5>
+  </div>
+
+  <!-- Identitas URL & Navigasi Terpadu -->
+  <script>
+    const SCRIPT_URL = "<?= scriptUrl ?>";
+  </script>
+  <?!= include('navbar'); ?>
+
+  <div class="container mt-4 mb-5">
+
+    <!-- Header Dasbor & Status Pengguna (RBAC) -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-2">
+      <div>
+        <h3 class="fw-bold text-dark m-0">
+          <i class="fa-solid fa-chart-line text-primary me-2"></i>Dasbor Analitik & Mutu Pembelajaran
+        </h3>
+        <small class="text-muted">Pemantauan performa 5 Dimensi STNKM, sistem peringatan dini, dan agregat akademik sekolah</small>
+      </div>
+      <div id="userBadgeContainer">
+        <span id="userBadge" class="badge bg-secondary px-3 py-2 fs-6 shadow-sm">
+          <i class="fa-solid fa-spinner fa-spin me-1"></i> Memverifikasi Sesi...
+        </span>
+      </div>
+    </div>
+
+    <!-- PANEL FILTER KONTEKS KELAS & PERIODE -->
+    <div class="card p-3 shadow-sm mb-4 border-0 rounded-4 bg-white border-top border-primary border-4">
+      <div class="row g-3 align-items-center">
+        <div class="col-md-5">
+          <label class="fw-bold text-primary small mb-1"><i class="fa-solid fa-landmark me-1"></i>Konteks Kelas</label>
+          <select class="form-select border-primary fw-semibold" id="dash_kelas" onchange="onDashFilterChange()">
+            <option value="ALL">-- Seluruh Kelas (Analisis Komparatif) --</option>
+          </select>
+        </div>
+        <div class="col-md-5">
+          <label class="fw-bold text-primary small mb-1"><i class="fa-solid fa-calendar-days me-1"></i>Periode Akademik</label>
+          <select class="form-select border-primary fw-semibold" id="dash_periode" onchange="onDashFilterChange()"></select>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+          <button class="btn btn-outline-primary w-100 fw-bold py-2 mt-auto rounded-3" onclick="refreshDashboardData()">
+            <i class="fa-solid fa-arrows-rotate me-1"></i> Sinkron
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- KARTU METRIK UTAMA (KPI) - 2 BARIS TERSTRUKTUR -->
+    <!-- BARIS 1: AGREGAT OPERASIONAL KELAS -->
+    <div class="row g-3 text-center mb-3">
+      <div class="col-6 col-lg-2 col-md-4">
+        <div class="card metric-card p-3 shadow-sm h-100 bg-primary bg-opacity-10 text-primary">
+          <h2 class="fw-bold m-0" id="d_siswa">0</h2>
+          <small class="fw-bold text-muted mt-1">Total Siswa</small>
+        </div>
+      </div>
+      <div class="col-6 col-lg-2 col-md-4">
+        <div class="card metric-card p-3 shadow-sm h-100 bg-success bg-opacity-10 text-success">
+          <h2 class="fw-bold m-0" id="d_guru">0</h2>
+          <small class="fw-bold text-muted mt-1">Guru Pamong</small>
+        </div>
+      </div>
+      <div class="col-6 col-lg-2 col-md-4">
+        <div class="card metric-card p-3 shadow-sm h-100 bg-info bg-opacity-10 text-info">
+          <h2 class="fw-bold m-0" id="d_mapel">0</h2>
+          <small class="fw-bold text-muted mt-1">Mata Pelajaran</small>
+        </div>
+      </div>
+      <div class="col-6 col-lg-2 col-md-4">
+        <div class="card metric-card p-3 shadow-sm h-100 bg-warning bg-opacity-10 text-warning">
+          <h2 class="fw-bold m-0" id="d_nilai">0</h2>
+          <small class="fw-bold text-muted mt-1">Entri Nilai</small>
+        </div>
+      </div>
+      <!-- KARTU BARU: JUMLAH ENTRI JURNAL -->
+      <div class="col-6 col-lg-2 col-md-4">
+        <div class="card metric-card p-3 shadow-sm h-100" style="background-color: rgba(111, 66, 193, 0.1); color: #6f42c1;">
+          <h2 class="fw-bold m-0" id="d_jurnal">0</h2>
+          <small class="fw-bold text-muted mt-1">Entri Jurnal</small>
+        </div>
+      </div>
+      <div class="col-6 col-lg-2 col-md-4">
+        <div class="card metric-card p-3 shadow-sm h-100 bg-secondary bg-opacity-10 text-dark">
+          <h2 class="fw-bold m-0" id="d_presensi">0%</h2>
+          <small class="fw-bold text-muted mt-1">Kehadiran Kelas</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- BARIS 2: AGREGAT MUTU & RATA-RATA STNKM (AKADEMIK VS JURNAL) -->
+    <div class="row g-3 text-center mb-4">
+      <!-- 1. Rata-rata Nilai Kelas -->
+      <div class="col-12 col-md-4">
+        <div class="card metric-card p-3 shadow-sm h-100 bg-danger bg-opacity-10 text-danger border-start border-danger border-4">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <small class="fw-bold text-muted text-uppercase">Rata-rata Kelas</small>
+            <span class="badge bg-danger" id="d_avg_status">KKM: 75</span>
+          </div>
+          <h2 class="fw-bold m-0 my-1" id="d_avg">0</h2>
+          <small class="text-muted fw-semibold">Akumulasi Nilai Akademik</small>
+        </div>
+      </div>
+
+      <!-- 2. Rata-rata STNKM Proses Akademik (TransNilai) -->
+      <div class="col-12 col-md-4">
+        <div class="card metric-card p-3 shadow-sm h-100 bg-primary bg-opacity-10 text-primary border-start border-primary border-4">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <small class="fw-bold text-muted text-uppercase">STNKM Akademik</small>
+            <span class="badge bg-primary">TransNilai</span>
+          </div>
+          <h2 class="fw-bold m-0 my-1" id="d_stnkm_aka_avg">0</h2>
+          <!-- Rincian 5 Pilar STNKM Akademik -->
+          <div class="d-flex justify-content-center flex-wrap gap-1 mt-1" style="font-size: 11px;">
+            <span class="badge bg-primary" title="Skill">S: <b id="d_stnkm_aka_s">0</b></span>
+            <span class="badge bg-success" title="Teori">T: <b id="d_stnkm_aka_t">0</b></span>
+            <span class="badge bg-warning text-dark" title="Nalar">N: <b id="d_stnkm_aka_n">0</b></span>
+            <span class="badge" style="background-color:#6f42c1; color:#fff;" title="Karakter">K: <b id="d_stnkm_aka_k">0</b></span>
+            <span class="badge" style="background-color:#d63384; color:#fff;" title="Minat">M: <b id="d_stnkm_aka_m">0</b></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Rata-rata STNKM Jurnal Observasi (TransJurnal) -->
+      <div class="col-12 col-md-4">
+        <div class="card metric-card p-3 shadow-sm h-100 bg-success bg-opacity-10 text-success border-start border-success border-4">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <small class="fw-bold text-muted text-uppercase">STNKM Observasi</small>
+            <span class="badge bg-success">TransJurnal</span>
+          </div>
+          <h2 class="fw-bold m-0 my-1" id="d_stnkm_jur_avg">0 Pts</h2>
+          <!-- Rincian 5 Pilar STNKM Jurnal -->
+          <div class="d-flex justify-content-center flex-wrap gap-1 mt-1" style="font-size: 11px;">
+            <span class="badge bg-primary" title="Skill">S: <b id="d_stnkm_jur_s">0</b></span>
+            <span class="badge bg-success" title="Teori">T: <b id="d_stnkm_jur_t">0</b></span>
+            <span class="badge bg-warning text-dark" title="Nalar">N: <b id="d_stnkm_jur_n">0</b></span>
+            <span class="badge" style="background-color:#6f42c1; color:#fff;" title="Karakter">K: <b id="d_stnkm_jur_k">0</b></span>
+            <span class="badge" style="background-color:#d63384; color:#fff;" title="Minat">M: <b id="d_stnkm_jur_m">0</b></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SISTEM PERINGATAN DINI (EWS) DENGAN SEARCH, SORTIR, DAN PAGINASI -->
+    <div class="card shadow-sm border-0 rounded-4 mb-4 ews-card bg-white p-4">
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3 gap-2">
+        <div>
+          <h5 class="fw-bold text-danger m-0">
+            <i class="fa-solid fa-triangle-exclamation me-2"></i>Sistem Peringatan Dini (Early Warning System - EWS)
+          </h5>
+          <small class="text-muted">Deteksi otomatis siswa yang membutuhkan intervensi akademik, presensi kritis, atau pembinaan karakter.</small>
+        </div>
+
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          <!-- Filter Kategori EWS -->
+          <div class="btn-group btn-group-sm" id="ewsFilterButtonGroup">
+            <button class="btn btn-outline-danger active fw-bold rounded-pill px-3" onclick="filterEwsList('ALL')">
+          Semua (<span id="cntEwsTotal">0</span>)
+        </button>
+            <button class="btn btn-outline-danger fw-bold rounded-pill px-3 ms-1" onclick="filterEwsList('AKADEMIK')">
+          Akademik (<span id="cntEwsAkademik">0</span>)
+        </button>
+            <button class="btn btn-outline-danger fw-bold rounded-pill px-3 ms-1" onclick="filterEwsList('PRESENSI')">
+          Presensi (<span id="cntEwsPresensi">0</span>)
+        </button>
+            <button class="btn btn-outline-danger fw-bold rounded-pill px-3 ms-1" onclick="filterEwsList('KARAKTER')">
+          Karakter (<span id="cntEwsKarakter">0</span>)
+        </button>
+          </div>
+
+          <!-- Toolbar Zoom & Ekspor EWS -->
+          <div class="btn-group btn-group-sm ms-md-2">
+            <button class="btn btn-outline-secondary btn-action-chart" onclick="zoomEWS()" title="Perbesar Tampilan Tabel EWS">
+          <i class="fa-solid fa-expand me-1"></i> Perbesar
+        </button>
+            <div class="dropdown d-inline-block">
+              <button class="btn btn-outline-danger btn-action-chart dropdown-toggle" data-bs-toggle="dropdown" title="Simpan Dokumen EWS">
+            <i class="fa-solid fa-download me-1"></i> Simpan / Cetak
+          </button>
+              <ul class="dropdown-menu dropdown-menu-end shadow">
+                <li><a class="dropdown-item small" href="javascript:void(0)"
+                    onclick="downloadEwsPNG()"><i class="fa-solid fa-image text-primary me-2"></i>Gambar (.PNG)</a></li>
+                <li><a class="dropdown-item small" href="javascript:void(0)"
+                    onclick="downloadEwsCSV()"><i class="fa-solid fa-file-csv text-success me-2"></i>Data Tabel
+                    (.CSV)</a></li>
+                <li><a class="dropdown-item small" href="javascript:void(0)"
+                    onclick="downloadEwsPDF()"><i class="fa-solid fa-file-pdf text-danger me-2"></i>Cetak Laporan Resmi
+                    (.PDF)</a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- INPUT PENCARIAN EWS REAL-TIME -->
+      <div class="row mb-3 g-2">
+        <div class="col-md-5 col-12">
+          <div class="input-group input-group-sm">
+            <span class="input-group-text bg-white text-danger border-danger"><i class="fa-solid fa-magnifying-glass"></i></span>
+            <input type="text" class="form-control border-danger" id="searchEwsInput" placeholder="Cari nama siswa, NISN, atau indikator masalah..." oninput="handleEwsSearch(this.value)">
+          </div>
+        </div>
+      </div>
+
+      <!-- TABEL SISWA TERDETEKSI EWS DENGAN SORTABLE HEADERS -->
+      <div class="table-responsive">
+        <table class="table table-hover table-bordered align-middle text-center m-0" style="font-size: 13px;">
+          <thead class="table-danger">
+            <tr>
+              <th width="5%" class="sortable text-nowrap" onclick="sortEwsTable('no')">No
+                <i class="fa-solid fa-sort"></i></th>
+              <th width="24%" class="sortable text-start text-nowrap" onclick="sortEwsTable('siswa')">Peserta Didik
+                <i class="fa-solid fa-sort"></i></th>
+              <th width="14%" class="sortable text-nowrap" onclick="sortEwsTable('risiko')">Tingkat Risiko
+                <i class="fa-solid fa-sort"></i></th>
+              <th width="15%" class="sortable text-nowrap" onclick="sortEwsTable('kategori')">Kategori Masalah
+                <i class="fa-solid fa-sort"></i></th>
+              <th width="30%" class="text-start">Detail Catatan / Temuan Bukti Masalah</th>
+              <th width="12%">Aksi Cepat</th>
+            </tr>
+          </thead>
+          <tbody id="ewsTableBody">
+            <tr>
+              <td colspan="6" class="text-center text-muted py-4">Memindai indikator peringatan dini kelas...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- KONTROL PAGINASI EWS -->
+      <div class="d-flex justify-content-between align-items-center mt-3" id="ewsPaginationContainer">
+        <button class="btn btn-sm btn-outline-danger fw-bold" id="btnPrevEws" onclick="changeEwsPage(-1)">
+      <i class="fa-solid fa-chevron-left me-1"></i> Sebelumnya
+    </button>
+        <span id="pageIndicatorEws" class="text-muted fw-bold small">Halaman 1 dari 1</span>
+        <button class="btn btn-sm btn-outline-danger fw-bold" id="btnNextEws" onclick="changeEwsPage(1)">
+      Selanjutnya <i class="fa-solid fa-chevron-right ms-1"></i>
+    </button>
+      </div>
+    </div>
+
+    <!-- PENGEMBANGAN 2: GRAFIK PROGRES STNKM (5 GARIS - KONTINU SEPANJANG WAKTU) -->
+    <div class="card chart-panel-card p-4 shadow-sm mb-4 border-0 rounded-4">
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3 gap-2">
+        <div>
+          <h5 class="fw-bold text-primary m-0">
+            <i class="fa-solid fa-timeline me-2"></i>Grafik Progres Capaian STNKM (5 Dimensi Kontinu)
+          </h5>
+          <small class="text-muted">Pergerakan dinamis 5 pilar kompetensi holistik: S (Skill), T (Teori), N (Nalar), K (Karakter), dan M (Minat) tanpa sumbu waktu terputus</small>
+        </div>
+
+        <!-- Filter Subjek & Skala Waktu Progres -->
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          <!-- Filter Subjek Siswa / Kelas -->
+          <div>
+            <select class="form-select form-select-sm border-primary fw-semibold" id="line_stnkm_siswa" onchange="renderChartLineSTNKM()" style="min-width: 190px;">
+              <option value="ALL">-- Rata-rata Kelas --</option>
+            </select>
+          </div>
+          <!-- Pemilih Sistem Data: Akademik vs Observasi Jurnal -->
+          <div>
+            <select class="form-select form-select-sm border-primary fw-semibold" id="line_stnkm_sumber" onchange="renderChartLineSTNKM()">
+              <option value="AKADEMIK" selected>Akademik (TransNilai - Poin STNKM)</option>
+              <option value="JURNAL">Karakter/Observasi (TransJurnal - Val STNKM)</option>
+            </select>
+          </div>
+          <!-- Filter Granularitas Waktu -->
+          <div>
+            <select class="form-select form-select-sm border-primary fw-semibold" id="line_stnkm_time" onchange="renderChartLineSTNKM()">
+              <option value="daily">Per Hari (Harian)</option>
+              <option value="weekly">Per Minggu (Mingguan)</option>
+              <option value="monthly" selected>Per Bulan (Bulanan)</option>
+            </select>
+          </div>
+          <!-- Toolbar Ekspor & Zoom Progres STNKM -->
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-secondary btn-action-chart" onclick="zoomChart('chartLineSTNKM', 'Progres Capaian 5 Dimensi STNKM')" title="Perbesar Tampilan">
+              <i class="fa-solid fa-expand"></i>
+            </button>
+            <div class="dropdown d-inline-block">
+              <button class="btn btn-outline-primary btn-action-chart dropdown-toggle" data-bs-toggle="dropdown" title="Ekspor Data">
+                <i class="fa-solid fa-download"></i>
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end shadow">
+                <li><a class="dropdown-item small" href="javascript:void(0)"
+                    onclick="downloadChartPNG('chartLineSTNKM', 'Progres_STNKM')"><i class="fa-solid fa-image text-primary me-2"></i>Gambar
+                    (.PNG)</a></li>
+                <li><a class="dropdown-item small" href="javascript:void(0)"
+                    onclick="downloadChartCSV('chartLineSTNKM', 'Progres_STNKM')"><i class="fa-solid fa-file-csv text-success me-2"></i>Data
+                    (.CSV)</a></li>
+                <li><a class="dropdown-item small" href="javascript:void(0)"
+                    onclick="downloadChartPDF('chartLineSTNKM', 'Progres Capaian 5 Dimensi STNKM')"><i class="fa-solid fa-file-pdf text-danger me-2"></i>Cetak
+                    Laporan (.PDF)</a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="position: relative; height: 320px;">
+        <canvas id="chartLineSTNKM"></canvas>
+      </div>
+    </div>
+
+    <!-- GRID VISUALISASI GRAFIK ANALITIK PELENGKAP -->
+    <div class="row g-4">
+
+      <!-- 1. RADAR STNKM: DNA CAPAIAN 5 DIMENSI -->
+      <div class="col-lg-6 col-12">
+        <div class="card chart-panel-card p-3 shadow-sm h-100">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <div>
+              <h6 class="fw-bold text-primary m-0"><i class="fa-solid fa-spider me-1"></i>Matriks Radar STNKM (DNA
+                Holistik)</h6>
+              <small class="text-muted" style="font-size: 11px;">Perbandingan Skor 5 Dimensi vs Standar KKM Target</small>
+            </div>
+            <!-- Toolbar Ekspor & Zoom -->
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-outline-secondary btn-action-chart" onclick="zoomChart('chartRadarSTNKM', 'Matriks Radar 5 Dimensi STNKM')" title="Perbesar Tampilan">
+                <i class="fa-solid fa-expand"></i>
+              </button>
+              <div class="dropdown">
+                <button class="btn btn-outline-primary btn-action-chart dropdown-toggle" data-bs-toggle="dropdown" title="Ekspor Data">
+                  <i class="fa-solid fa-download"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow">
+                  <li><a class="dropdown-item small" href="javascript:void(0)"
+                      onclick="downloadChartPNG('chartRadarSTNKM', 'Radar_STNKM')"><i class="fa-solid fa-image text-primary me-2"></i>Gambar
+                      (.PNG)</a></li>
+                  <li><a class="dropdown-item small" href="javascript:void(0)"
+                      onclick="downloadChartCSV('chartRadarSTNKM', 'Radar_STNKM')"><i class="fa-solid fa-file-csv text-success me-2"></i>Data
+                      (.CSV)</a></li>
+                  <li><a class="dropdown-item small" href="javascript:void(0)"
+                      onclick="downloadChartPDF('chartRadarSTNKM', 'Matriks Radar 5 Dimensi STNKM')"><i class="fa-solid fa-file-pdf text-danger me-2"></i>Cetak
+                      Laporan (.PDF)</a></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div style="position: relative; height: 280px;">
+            <canvas id="chartRadarSTNKM"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. RATA-RATA CAPAIAN PER MATA PELAJARAN -->
+      <div class="col-lg-6 col-12">
+        <div class="card chart-panel-card p-3 shadow-sm h-100">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <div>
+              <h6 class="fw-bold text-success m-0"><i class="fa-solid fa-chart-column me-1"></i>Capaian Rata-rata per
+                Mapel</h6>
+              <small class="text-muted" style="font-size: 11px;">Distribusi rata-rata nilai mata pelajaran terhadap KKM</small>
+            </div>
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-outline-secondary btn-action-chart" onclick="zoomChart('chartMapel', 'Capaian Rata-rata per Mata Pelajaran')" title="Perbesar Tampilan">
+                <i class="fa-solid fa-expand"></i>
+              </button>
+              <div class="dropdown">
+                <button class="btn btn-outline-primary btn-action-chart dropdown-toggle" data-bs-toggle="dropdown" title="Ekspor Data">
+                  <i class="fa-solid fa-download"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow">
+                  <li><a class="dropdown-item small" href="javascript:void(0)"
+                      onclick="downloadChartPNG('chartMapel', 'Rata_Mapel')"><i class="fa-solid fa-image text-primary me-2"></i>Gambar
+                      (.PNG)</a></li>
+                  <li><a class="dropdown-item small" href="javascript:void(0)"
+                      onclick="downloadChartCSV('chartMapel', 'Rata_Mapel')"><i class="fa-solid fa-file-csv text-success me-2"></i>Data
+                      (.CSV)</a></li>
+                  <li><a class="dropdown-item small" href="javascript:void(0)"
+                      onclick="downloadChartPDF('chartMapel', 'Capaian Rata-rata per Mata Pelajaran')"><i class="fa-solid fa-file-pdf text-danger me-2"></i>Cetak
+                      Laporan (.PDF)</a></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div style="position: relative; height: 280px;">
+            <canvas id="chartMapel"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. PROPORSI JENIS PENILAIAN -->
+      <div class="col-lg-6 col-12">
+        <div class="card chart-panel-card p-3 shadow-sm h-100">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <div>
+              <h6 class="fw-bold text-warning text-dark m-0"><i class="fa-solid fa-chart-pie me-1"></i>Proporsi Jenis
+                Penilaian</h6>
+              <small class="text-muted" style="font-size: 11px;">Sebaran entri asesmen (Formatif, Sumatif, Tugas, Proyek)</small>
+            </div>
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-outline-secondary btn-action-chart" onclick="zoomChart('chartJenis', 'Proporsi Jenis Penilaian')" title="Perbesar Tampilan">
+                <i class="fa-solid fa-expand"></i>
+              </button>
+              <div class="dropdown">
+                <button class="btn btn-outline-primary btn-action-chart dropdown-toggle" data-bs-toggle="dropdown" title="Ekspor Data">
+                  <i class="fa-solid fa-download"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow">
+                  <li><a class="dropdown-item small" href="javascript:void(0)"
+                      onclick="downloadChartPNG('chartJenis', 'Jenis_Penilaian')"><i class="fa-solid fa-image text-primary me-2"></i>Gambar
+                      (.PNG)</a></li>
+                  <li><a class="dropdown-item small" href="javascript:void(0)"
+                      onclick="downloadChartCSV('chartJenis', 'Jenis_Penilaian')"><i class="fa-solid fa-file-csv text-success me-2"></i>Data
+                      (.CSV)</a></li>
+                  <li><a class="dropdown-item small" href="javascript:void(0)"
+                      onclick="downloadChartPDF('chartJenis', 'Proporsi Jenis Penilaian')"><i class="fa-solid fa-file-pdf text-danger me-2"></i>Cetak
+                      Laporan (.PDF)</a></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div style="position: relative; height: 280px;">
+            <canvas id="chartJenis"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. KORELASI PRESTASI VS KARAKTER & KEHADIRAN -->
+      <div class="col-lg-6 col-12">
+        <div class="card chart-panel-card p-3 shadow-sm h-100">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <div>
+              <h6 class="fw-bold text-dark m-0"><i class="fa-solid fa-users-viewfinder me-1"></i>Korelasi Kehadiran &
+                Karakter</h6>
+              <small class="text-muted" style="font-size: 11px;">Kedisiplinan hadir dan poin karakter observasi terhadap capaian</small>
+            </div>
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-outline-secondary btn-action-chart" onclick="zoomChart('chartKarakterPresensi', 'Korelasi Kehadiran Karakter dan Nilai')" title="Perbesar Tampilan">
+                <i class="fa-solid fa-expand"></i>
+              </button>
+              <div class="dropdown">
+                <button class="btn btn-outline-primary btn-action-chart dropdown-toggle" data-bs-toggle="dropdown" title="Ekspor Data">
+                  <i class="fa-solid fa-download"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow">
+                  <li><a class="dropdown-item small" href="javascript:void(0)"
+                      onclick="downloadChartPNG('chartKarakterPresensi', 'Korelasi_Siswa')"><i class="fa-solid fa-image text-primary me-2"></i>Gambar
+                      (.PNG)</a></li>
+                  <li><a class="dropdown-item small" href="javascript:void(0)"
+                      onclick="downloadChartCSV('chartKarakterPresensi', 'Korelasi_Siswa')"><i class="fa-solid fa-file-csv text-success me-2"></i>Data
+                      (.CSV)</a></li>
+                  <li><a class="dropdown-item small" href="javascript:void(0)"
+                      onclick="downloadChartPDF('chartKarakterPresensi', 'Korelasi Kehadiran Karakter dan Nilai')"><i class="fa-solid fa-file-pdf text-danger me-2"></i>Cetak
+                      Laporan (.PDF)</a></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div style="position: relative; height: 280px;">
+            <canvas id="chartKarakterPresensi"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AKSES CEPAT PROFIL SISWA KELAS -->
+    <div class="card p-4 shadow-sm border-0 rounded-4 mt-4 bg-white">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold text-primary m-0">
+          <i class="fa-solid fa-id-card-clip me-2"></i>Akses Cepat Lembar Profil Peserta Didik
+        </h5>
+        <span class="text-muted small">Klik nama siswa untuk melihat rekam jejak 360°</span>
+      </div>
+      <div id="dashStudentList" class="d-flex flex-wrap gap-2">
+        <span class="text-muted small">Memuat daftar siswa...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL POP UP PERBESAR GRAFIK (CHART ZOOM MODAL) -->
+  <div class="modal fade" id="modalChartZoom" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+      <div class="modal-content rounded-4 border-0 shadow">
+        <div class="modal-header border-bottom py-3">
+          <h5 class="modal-title fw-bold text-dark" id="modalZoomTitle">
+            <i class="fa-solid fa-magnifying-glass-plus text-primary me-2"></i>Detail Grafik Analitik
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div style="position: relative; height: 420px; width: 100%;">
+            <canvas id="canvasZoomModal"></canvas>
+          </div>
+          <!-- Tabel Rincian Data Angka di Bawah Zoom Chart -->
+          <div class="table-responsive mt-4">
+            <h6 class="fw-bold text-secondary mb-2"><i class="fa-solid fa-table-list me-1"></i>Tabel Rincian Parameter:
+            </h6>
+            <table class="table table-sm table-bordered text-center align-middle" style="font-size: 13px;">
+              <thead class="table-light" id="zoomTableThead"></thead>
+              <tbody id="zoomTableTbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer border-top py-2 d-flex justify-content-between">
+          <span class="text-muted small">Format ekspor telah disesuaikan dengan standar pelaporan resmi sekolah.</span>
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-primary" id="btnZoomPng"><i class="fa-solid fa-image me-1"></i>PNG</button>
+            <button class="btn btn-outline-success" id="btnZoomCsv"><i class="fa-solid fa-file-csv me-1"></i>CSV</button>
+            <button class="btn btn-outline-danger" id="btnZoomPdf"><i class="fa-solid fa-file-pdf me-1"></i>PDF</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL POP UP PERBESAR EWS (EWS ZOOM MODAL) -->
+  <div class="modal fade" id="modalEwsZoom" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content rounded-4 border-0 shadow">
+        <div class="modal-header border-bottom py-3 bg-danger bg-opacity-10">
+          <h5 class="modal-title fw-bold text-danger">
+            <i class="fa-solid fa-triangle-exclamation me-2"></i>Sistem Peringatan Dini (EWS) - Tinjauan Mendalam
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="alert alert-light border border-danger mb-3 p-3 rounded-3">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <strong>Status Filter Aktif:</strong>
+                <span class="badge bg-danger ms-1" id="zoomEwsFilterLabel">Semua Risiko</span>
+              </div>
+              <div>
+                <strong>Total Terdeteksi:</strong>
+                <span class="badge bg-dark ms-1" id="zoomEwsCountLabel">0 Siswa</span>
+              </div>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-hover table-bordered align-middle text-center" style="font-size: 13px;">
+              <thead class="table-danger">
+                <tr>
+                  <th width="4%">No</th>
+                  <th width="24%" class="text-start">Peserta Didik</th>
+                  <th width="12%">Tingkat Risiko</th>
+                  <th width="15%">Kategori Masalah</th>
+                  <th width="45%" class="text-start">Detail Catatan / Temuan Bukti Masalah</th>
+                </tr>
+              </thead>
+              <tbody id="zoomEwsTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer border-top py-2 d-flex justify-content-between">
+          <span class="text-muted small">Data tersaring siap digunakan untuk bahan rapat pleno guru & bimbingan konseling.</span>
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-primary" onclick="downloadEwsPNG()"><i class="fa-solid fa-image me-1"></i>PNG</button>
+            <button class="btn btn-outline-success" onclick="downloadEwsCSV()"><i class="fa-solid fa-file-csv me-1"></i>CSV</button>
+            <button class="btn btn-outline-danger" onclick="downloadEwsPDF()"><i class="fa-solid fa-file-pdf me-1"></i>PDF</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT LOGIKA BISNIS DASHBOARD -->
+  <script>
+    // State Global
+    let DB = {};
+    let cUser = {};
+    let currentContext = { kelas: 'ALL', periode: null };
+    let chartInstances = {};
+    let zoomChartInstance = null;
+    let globalEwsRecords = [];
+    let activeEwsFilter = 'ALL';
+
+    // State Kontrol Tabel EWS
+    let currentEwsPage = 1;
+    const pageSizeEws = 10;
+    let sortColEws = 'risiko'; // 'risiko', 'siswa', 'kategori', 'no'
+    let sortAscEws = false; // Default: risiko tertinggi di urutan teratas
+    let searchEwsQuery = '';
+
+    // Failsafe Timer
+    let failsafeTimer = setTimeout(() => {
+      let overlay = document.getElementById('loadingOverlay');
+      if (overlay) overlay.style.display = 'none';
+    }, 6000);
+
+    function showL(text) {
+      let txt = document.getElementById('loadingText');
+      if (txt) txt.innerText = text || "Memproses...";
+      let ovr = document.getElementById('loadingOverlay');
+      if (ovr) ovr.style.display = 'flex';
+    }
+    function hideL() {
+      let ovr = document.getElementById('loadingOverlay');
+      if (ovr) ovr.style.display = 'none';
+      if (failsafeTimer) clearTimeout(failsafeTimer);
+    }
+
+    // Inisialisasi Dokumen
+    document.addEventListener("DOMContentLoaded", function() {
+      try {
+        cUser = JSON.parse(sessionStorage.getItem('eduUser') || '{}');
+      } catch (e) {
+        cUser = {};
+      }
+
+      if (!cUser || (!cUser.name && !cUser.username)) {
+        window.top.location.href = SCRIPT_URL + '?page=login';
+        return;
+      }
+
+      // Tampilkan Lencana Pengguna RBAC
+      let uBadge = document.getElementById('userBadge');
+      if (uBadge) {
+        if (cUser.role === 'admin') {
+          uBadge.className = 'badge bg-danger px-3 py-2 fs-6 shadow-sm';
+          uBadge.innerHTML = `<i class="fa-solid fa-user-shield me-1"></i> ${cUser.name || cUser.username} (Administrator)`;
+        } else if (cUser.role === 'kepsek') {
+          uBadge.className = 'badge bg-warning text-dark px-3 py-2 fs-6 shadow-sm';
+          uBadge.innerHTML = `<i class="fa-solid fa-school me-1"></i> ${cUser.name || cUser.username} (Kepala Sekolah)`;
+        } else {
+          uBadge.className = 'badge bg-primary px-3 py-2 fs-6 shadow-sm';
+          uBadge.innerHTML = `<i class="fa-solid fa-chalkboard-user me-1"></i> ${cUser.name || cUser.username} (Guru Mapel)`;
+        }
+      }
+
+      initData();
+    });
+
+    function initData() {
+      showL("Sinkronisasi Basis Data Dasbor...");
+      google.script.run
+        .withSuccessHandler(function(res) {
+          DB = res || {};
+          populateFilterDropdowns();
+          refreshDashboardData();
+        })
+        .withFailureHandler(function(err) {
+          hideL();
+          Swal.fire('Koneksi Gagal', err.message, 'error');
+        })
+        .getMasterReferences();
+    }
+
+    function populateFilterDropdowns() {
+      // Periode
+      let perSelect = document.getElementById('dash_periode');
+      let perOpts = '';
+      (DB.MasterPeriode || []).forEach(p => {
+        let sel = (p.is_active === 'Y' || p.is_active === true || p.status_aktif === 'AKTIF') ? 'selected' : '';
+        perOpts += `<option value="${p.id_periode}" ${sel}>${p.tahun_ajaran} (${p.semester})</option>`;
+      });
+      perSelect.innerHTML = perOpts;
+
+      // Kelas
+      let klsSelect = document.getElementById('dash_kelas');
+      let klsOpts = '<option value="ALL">-- Seluruh Kelas (Analisis Komparatif) --</option>';
+      (DB.MasterKelas || []).forEach(k => {
+        klsOpts += `<option value="${k.id_kelas}">${k.nama_kelas}</option>`;
+      });
+      klsSelect.innerHTML = klsOpts;
+    }
+
+    function onDashFilterChange() {
+      refreshDashboardData();
+    }
+
+    function refreshDashboardData() {
+      let idKls = document.getElementById('dash_kelas').value;
+      let idPer = document.getElementById('dash_periode').value;
+
+      showL("Menghitung Agregat STNKM & EWS...");
+
+      if (idKls !== 'ALL' && idPer) {
+        google.script.run
+          .withSuccessHandler(function(res) {
+            DB = res || {};
+            currentContext = { kelas: idKls, periode: idPer };
+            renderAllDashboardComponents();
+            hideL();
+          })
+          .withFailureHandler(function(err) {
+            hideL();
+            Swal.fire('Error Jaringan', err.message, 'error');
+          })
+          .getTransactionalDataByContext(idKls, idPer, true);
+      } else {
+        currentContext = { kelas: 'ALL', periode: idPer };
+        renderAllDashboardComponents();
+        hideL();
+      }
+    }
+
+    // ========================================================
+    // RENDER SELURUH KOMPONEN DASBOR DENGAN METRIK STNKM & JURNAL
+    // ========================================================
+    function renderAllDashboardComponents() {
+      let idKls = currentContext.kelas;
+      let idPer = currentContext.periode;
+
+      // Filter Siswa Sesuai Konteks Kelas
+      let listSiswa = (DB.MasterSiswa || []).filter(s => (idKls === 'ALL' || String(s.id_kelas).trim() === String(idKls).trim()));
+      let listMapel = DB.MasterMapel || [];
+      let listGuru = DB.MasterGuru || [];
+
+      // Filter TransNilai Sesuai Kelas & Periode
+      let listNilai = (DB.TransNilai || []).filter(n => 
+        (idKls === 'ALL' || String(n.id_kelas).trim() === String(idKls).trim()) &&
+        (!idPer || String(n.id_periode).trim() === String(idPer).trim())
+      );
+
+      // Filter TransPresensi Sesuai Kelas & Periode
+      let listPresensi = (DB.TransPresensi || []).filter(p => 
+        (idKls === 'ALL' || String(p.id_kelas).trim() === String(idKls).trim()) &&
+        (!idPer || String(p.id_periode).trim() === String(idPer).trim())
+      );
+
+      // Filter TransJurnal Sesuai Kelas (melalui id_siswa)
+      let listJurnal = (DB.TransJurnal || []).filter(j => {
+        let s = (DB.MasterSiswa || []).find(sis => String(sis.id_siswa) === String(j.id_siswa));
+        return (idKls === 'ALL' || (s && String(s.id_kelas).trim() === String(idKls).trim()));
+      });
+
+      // --------------------------------------------------------
+      // 1. UPDATE KARTU BARIS 1: OPERASIONAL KELAS
+      // --------------------------------------------------------
+      document.getElementById('d_siswa').innerText = listSiswa.length;
+      document.getElementById('d_guru').innerText = listGuru.length;
+      document.getElementById('d_mapel').innerText = listMapel.length;
+      document.getElementById('d_nilai').innerText = listNilai.length;
+      document.getElementById('d_jurnal').innerText = listJurnal.length; // Entri Jurnal Riil
+
+      let totalPresensi = listPresensi.length;
+      let totalHadir = listPresensi.filter(p => {
+        let st = String(p.status || p.status_kehadiran || '').toUpperCase();
+        return st === 'H' || st === 'HADIR';
+      }).length;
+      let persenPresensi = totalPresensi > 0 ? Math.round((totalHadir / totalPresensi) * 100) : 0;
+      document.getElementById('d_presensi').innerText = `${persenPresensi}%`;
+
+      // --------------------------------------------------------
+      // 2. UPDATE KARTU BARIS 2: RATA-RATA NILAI KELAS
+      // --------------------------------------------------------
+      let sumNilai = listNilai.reduce((acc, cur) => acc + (parseFloat(cur.nilai) || 0), 0);
+      let avgNilai = listNilai.length > 0 ? parseFloat((sumNilai / listNilai.length).toFixed(1)) : 0;
+      document.getElementById('d_avg').innerText = avgNilai;
+
+      let kkmSekolah = 75;
+      if (DB.PengaturanSekolah && DB.PengaturanSekolah[0] && DB.PengaturanSekolah[0].kkm_global) {
+        kkmSekolah = parseFloat(DB.PengaturanSekolah[0].kkm_global);
+      }
+      let elAvgStat = document.getElementById('d_avg_status');
+      if (elAvgStat) {
+        elAvgStat.innerText = `KKM: ${kkmSekolah}`;
+        elAvgStat.className = (avgNilai >= kkmSekolah && avgNilai > 0) ? 'badge bg-success' : 'badge bg-danger';
+      }
+
+      // --------------------------------------------------------
+      // 3. UPDATE KARTU BARIS 2: RATA-RATA STNKM AKADEMIK (TransNilai)
+      // --------------------------------------------------------
+      let cntNilai = listNilai.length;
+      if (cntNilai > 0) {
+        let totS = 0, totT = 0, totN = 0, totK = 0, totM = 0;
+        listNilai.forEach(n => {
+          totS += parseFloat(n.poin_S !== undefined && n.poin_S !== null && n.poin_S !== '' ? n.poin_S : (n.nilai || 0));
+          totT += parseFloat(n.poin_T !== undefined && n.poin_T !== null && n.poin_T !== '' ? n.poin_T : (n.nilai || 0));
+          totN += parseFloat(n.poin_N !== undefined && n.poin_N !== null && n.poin_N !== '' ? n.poin_N : (n.nilai || 0));
+          totK += parseFloat(n.poin_K !== undefined && n.poin_K !== null && n.poin_K !== '' ? n.poin_K : (n.nilai || 0));
+          totM += parseFloat(n.poin_M !== undefined && n.poin_M !== null && n.poin_M !== '' ? n.poin_M : (n.nilai || 0));
+        });
+
+        let avgS = parseFloat((totS / cntNilai).toFixed(1));
+        let avgT = parseFloat((totT / cntNilai).toFixed(1));
+        let avgN = parseFloat((totN / cntNilai).toFixed(1));
+        let avgK = parseFloat((totK / cntNilai).toFixed(1));
+        let avgM = parseFloat((totM / cntNilai).toFixed(1));
+        let avgComposite = parseFloat(((avgS + avgT + avgN + avgK + avgM) / 5).toFixed(1));
+
+        document.getElementById('d_stnkm_aka_avg').innerText = avgComposite;
+        document.getElementById('d_stnkm_aka_s').innerText = avgS;
+        document.getElementById('d_stnkm_aka_t').innerText = avgT;
+        document.getElementById('d_stnkm_aka_n').innerText = avgN;
+        document.getElementById('d_stnkm_aka_k').innerText = avgK;
+        document.getElementById('d_stnkm_aka_m').innerText = avgM;
+      } else {
+        // Murni 0 jika belum ada asesmen akademik
+        document.getElementById('d_stnkm_aka_avg').innerText = '0';
+        document.getElementById('d_stnkm_aka_s').innerText = '0';
+        document.getElementById('d_stnkm_aka_t').innerText = '0';
+        document.getElementById('d_stnkm_aka_n').innerText = '0';
+        document.getElementById('d_stnkm_aka_k').innerText = '0';
+        document.getElementById('d_stnkm_aka_m').innerText = '0';
+      }
+
+      // --------------------------------------------------------
+      // 4. UPDATE KARTU BARIS 2: RATA-RATA STNKM JURNAL (TransJurnal)
+      // --------------------------------------------------------
+      let cntJurnal = listJurnal.length;
+      if (cntJurnal > 0) {
+        let totS = 0, totT = 0, totN = 0, totK = 0, totM = 0;
+        listJurnal.forEach(j => {
+          totS += parseFloat(j.val_S || 0);
+          totT += parseFloat(j.val_T || 0);
+          totN += parseFloat(j.val_N || 0);
+          totK += parseFloat(j.val_K || 0);
+          totM += parseFloat(j.val_M || 0);
+        });
+
+        let fmtPoint = v => (v > 0 ? `+${v.toFixed(1)}` : v.toFixed(1));
+        let avgS = totS / cntJurnal;
+        let avgT = totT / cntJurnal;
+        let avgN = totN / cntJurnal;
+        let avgK = totK / cntJurnal;
+        let avgM = totM / cntJurnal;
+        let avgComposite = (avgS + avgT + avgN + avgK + avgM) / 5;
+
+        document.getElementById('d_stnkm_jur_avg').innerText = `${fmtPoint(avgComposite)} Pts`;
+        document.getElementById('d_stnkm_jur_s').innerText = fmtPoint(avgS);
+        document.getElementById('d_stnkm_jur_t').innerText = fmtPoint(avgT);
+        document.getElementById('d_stnkm_jur_n').innerText = fmtPoint(avgN);
+        document.getElementById('d_stnkm_jur_k').innerText = fmtPoint(avgK);
+        document.getElementById('d_stnkm_jur_m').innerText = fmtPoint(avgM);
+      } else {
+        // Murni 0 jika belum ada catatan jurnal
+        document.getElementById('d_stnkm_jur_avg').innerText = '0 Pts';
+        document.getElementById('d_stnkm_jur_s').innerText = '0';
+        document.getElementById('d_stnkm_jur_t').innerText = '0';
+        document.getElementById('d_stnkm_jur_n').innerText = '0';
+        document.getElementById('d_stnkm_jur_k').innerText = '0';
+        document.getElementById('d_stnkm_jur_m').innerText = '0';
+      }
+
+      // Render Modul Lanjutan
+      buildAndRenderEWS(listSiswa, listNilai, listPresensi, listJurnal);
+      populateStnkmSiswaDropdown(listSiswa);
+      renderChartLineSTNKM();
+      renderChartRadarSTNKM(listNilai, listJurnal);
+      renderChartMapel(listMapel, listNilai);
+      renderChartJenis(listNilai);
+      renderChartKarakterPresensi(listSiswa, listNilai, listPresensi, listJurnal);
+      renderStudentPillList(listSiswa);
+    }
+
+    // Mengisi dropdown pilihan siswa untuk grafik garis progres STNKM
+    function populateStnkmSiswaDropdown(siswaList) {
+      let sel = document.getElementById('line_stnkm_siswa');
+      let valSebelum = sel.value;
+      let html = '<option value="ALL">-- Rata-rata Kelas --</option>';
+      siswaList.forEach(s => {
+        html += `<option value="${s.id_siswa}">${s.nama_siswa}</option>`;
+      });
+      sel.innerHTML = html;
+      if (valSebelum && siswaList.some(s => String(s.id_siswa) === String(valSebelum))) {
+        sel.value = valSebelum;
+      }
+    }
+
+    // ========================================================
+    // MODUL 1: SISTEM PERINGATAN DINI (EWS) DENGAN ZOOM & EKSPOR
+    // ========================================================
+    function buildAndRenderEWS(siswaList, nilaiList, presensiList, jurnalList) {
+      globalEwsRecords = [];
+      let kkmSekolah = 75;
+      if (DB.PengaturanSekolah && DB.PengaturanSekolah[0] && DB.PengaturanSekolah[0].kkm_global) {
+        kkmSekolah = parseFloat(DB.PengaturanSekolah[0].kkm_global);
+      }
+
+      siswaList.forEach(s => {
+        let idSis = String(s.id_siswa);
+        let namaSis = s.nama_siswa || 'Siswa';
+        let issues = [];
+        let riskScore = 0; // 1: Waspada, 2: Perhatian, 3: Bahaya
+
+        // A. Cek Risiko Akademik
+        let sNilai = nilaiList.filter(n => String(n.id_siswa) === idSis);
+        let belowKkm = [];
+        sNilai.forEach(n => {
+          let m = (DB.MasterMapel || []).find(x => String(x.id_mapel) === String(n.id_mapel));
+          let kkmMapel = (m && m.kkm) ? parseFloat(m.kkm) : kkmSekolah;
+          let val = parseFloat(n.nilai) || 0;
+          if (val < kkmMapel) {
+            belowKkm.push(`${m ? m.nama_mapel : 'Mapel'} (${val})`);
+          }
+        });
+
+        if (belowKkm.length >= 2) {
+          riskScore = Math.max(riskScore, 3);
+          issues.push({
+            kategori: 'AKADEMIK',
+            deskripsi: `Mendapat ${belowKkm.length} kali nilai di bawah KKM pada: ${belowKkm.slice(0, 3).join(', ')}.`
+          });
+        } else if (belowKkm.length === 1) {
+          riskScore = Math.max(riskScore, 1);
+          issues.push({
+            kategori: 'AKADEMIK',
+            deskripsi: `1 nilai di bawah KKM pada: ${belowKkm[0]}.`
+          });
+        }
+
+        // B. Cek Risiko Presensi
+        let sPres = presensiList.filter(p => String(p.id_siswa) === idSis);
+        let cntAlpa = sPres.filter(p => String(p.status).toUpperCase() === 'A' || String(p.status_kehadiran).toUpperCase() === 'ALPA').length;
+        let cntSakitIzin = sPres.filter(p => ['S', 'I', 'SAKIT', 'IZIN'].includes(String(p.status || p.status_kehadiran).toUpperCase())).length;
+
+        if (cntAlpa >= 3) {
+          riskScore = Math.max(riskScore, 3);
+          issues.push({
+            kategori: 'PRESENSI',
+            deskripsi: `Akumulasi ketidakhadiran kritis: ${cntAlpa} kali Alpa (tanpa keterangan).`
+          });
+        } else if (cntAlpa >= 1 || (cntAlpa + cntSakitIzin) >= 5) {
+          riskScore = Math.max(riskScore, 2);
+          issues.push({
+            kategori: 'PRESENSI',
+            deskripsi: `Kehadiran perlu dipantau: ${cntAlpa} Alpa, ${cntSakitIzin} Sakit/Izin.`
+          });
+        }
+
+        // C. Cek Risiko Karakter / Observasi Perilaku Jurnal
+        let sJur = jurnalList.filter(j => String(j.id_siswa) === idSis);
+        let negJur = sJur.filter(j => 
+          String(j.mode_dampak).toUpperCase() === 'INTERVENSI' || 
+          String(j.mode_dampak).toUpperCase() === 'MINUS' ||
+          (parseFloat(j.val_K) < 0 || parseFloat(j.val_S) < 0)
+        );
+
+        if (negJur.length >= 2) {
+          riskScore = Math.max(riskScore, 3);
+          issues.push({
+            kategori: 'KARAKTER',
+            deskripsi: `Tercatat ${negJur.length} kejadian memerlukan intervensi bimbingan konseling pada jurnal perilaku.`
+          });
+        } else if (negJur.length === 1) {
+          riskScore = Math.max(riskScore, 2);
+          issues.push({
+            kategori: 'KARAKTER',
+            deskripsi: `1 catatan intervensi perilaku: "${(negJur[0].narasi_kejadian || '').substring(0, 45)}...".`
+          });
+        }
+
+        if (issues.length > 0) {
+          let tingkatan = 'Waspada';
+          let badgeClass = 'bg-info text-dark';
+          if (riskScore === 3) {
+            tingkatan = 'Bahaya (Tinggi)';
+            badgeClass = 'bg-danger text-white';
+          } else if (riskScore === 2) {
+            tingkatan = 'Perhatian (Sedang)';
+            badgeClass = 'bg-warning text-dark';
+          }
+
+          let kategoriUtama = issues.map(x => x.kategori);
+
+          globalEwsRecords.push({
+            id_siswa: idSis,
+            nama_siswa: namaSis,
+            riskScore: riskScore,
+            tingkatan: tingkatan,
+            badgeClass: badgeClass,
+            kategoriList: kategoriUtama,
+            issues: issues
+          });
+        }
+      });
+
+      globalEwsRecords.sort((a, b) => b.riskScore - a.riskScore);
+
+      let cntAkd = globalEwsRecords.filter(r => r.kategoriList.includes('AKADEMIK')).length;
+      let cntPre = globalEwsRecords.filter(r => r.kategoriList.includes('PRESENSI')).length;
+      let cntKar = globalEwsRecords.filter(r => r.kategoriList.includes('KARAKTER')).length;
+
+      document.getElementById('cntEwsTotal').innerText = globalEwsRecords.length;
+      document.getElementById('cntEwsAkademik').innerText = cntAkd;
+      document.getElementById('cntEwsPresensi').innerText = cntPre;
+      document.getElementById('cntEwsKarakter').innerText = cntKar;
+
+      renderFilteredEwsTable();
+    }
+
+    function filterEwsList(kategori) {
+      activeEwsFilter = kategori;
+      let btns = document.querySelectorAll('#ewsFilterButtonGroup button');
+      btns.forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
+      renderFilteredEwsTable();
+    }
+
+    function getFilteredEwsData() {
+      let data = globalEwsRecords.slice();
+      if (activeEwsFilter !== 'ALL') {
+        data = data.filter(r => r.kategoriList.includes(activeEwsFilter));
+      }
+      return data;
+    }
+
+    function renderFilteredEwsTable() {
+      let tbody = document.getElementById('ewsTableBody');
+      let data = getFilteredEwsData();
+
+      if (data.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" class="text-center py-4 text-success fw-bold">
+              <i class="fa-solid fa-circle-check fa-2x mb-2 d-block"></i>
+              Kondisi Terkendali! Tidak ada siswa dalam kategori risiko ini.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      let rows = '';
+      data.forEach((r, idx) => {
+        let listDesc = r.issues.map(iss => `<div class="mb-1">&bull; <span class="badge bg-secondary" style="font-size:10px;">${iss.kategori}</span> ${iss.deskripsi}</div>`).join('');
+        let kategoriBadges = r.kategoriList.map(k => `<span class="badge bg-dark me-1" style="font-size:10px;">${k}</span>`).join('');
+
+        rows += `
+          <tr>
+            <td class="fw-bold">${idx + 1}</td>
+            <td class="text-start">
+              <span class="fw-bold text-dark">${r.nama_siswa}</span>
+              <br><small class="text-muted">NISN: ${r.id_siswa}</small>
+            </td>
+            <td><span class="badge badge-pill-custom ${r.badgeClass}">${r.tingkatan}</span></td>
+            <td>${kategoriBadges}</td>
+            <td class="text-start" style="font-size: 12px;">${listDesc}</td>
+            <td>
+              <a href="${SCRIPT_URL}?page=profil&tipe=siswa&id=${r.id_siswa}" target="_top" class="btn btn-sm btn-outline-danger fw-bold rounded-pill">
+                <i class="fa-solid fa-user-pen me-1"></i> Bimbing
+              </a>
+            </td>
+          </tr>
+        `;
+      });
+      tbody.innerHTML = rows;
+    }
+
+    // ========================================================
+    // FITUR UNDUH & ZOOM TABEL EWS (SESUAI FILTER AKTIF)
+    // ========================================================
+    function zoomEWS() {
+      let data = getFilteredEwsData();
+      let labelKategori = activeEwsFilter === 'ALL' ? 'Semua Risiko' : `Kategori ${activeEwsFilter}`;
+      document.getElementById('zoomEwsFilterLabel').innerText = labelKategori;
+      document.getElementById('zoomEwsCountLabel').innerText = `${data.length} Siswa Terdeteksi`;
+
+      let tbody = document.getElementById('zoomEwsTableBody');
+      if (data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-success fw-bold text-center">Tidak ada siswa berisiko pada filter ini.</td></tr>`;
+      } else {
+        let rows = '';
+        data.forEach((r, idx) => {
+          let listDesc = r.issues.map(iss => `<div class="mb-1">&bull; <b>[${iss.kategori}]</b> ${iss.deskripsi}</div>`).join('');
+          let katBadges = r.kategoriList.map(k => `<span class="badge bg-dark me-1">${k}</span>`).join('');
+          rows += `
+            <tr>
+              <td class="fw-bold">${idx + 1}</td>
+              <td class="text-start">
+                <span class="fw-bold">${r.nama_siswa}</span><br>
+                <small class="text-muted">NISN: ${r.id_siswa}</small>
+              </td>
+              <td><span class="badge badge-pill-custom ${r.badgeClass}">${r.tingkatan}</span></td>
+              <td>${katBadges}</td>
+              <td class="text-start">${listDesc}</td>
+            </tr>
+          `;
+        });
+        tbody.innerHTML = rows;
+      }
+
+      let m = new bootstrap.Modal(document.getElementById('modalEwsZoom'));
+      m.show();
+    }
+
+    function downloadEwsCSV() {
+      let data = getFilteredEwsData();
+      if (data.length === 0) {
+        return Swal.fire('Informasi', 'Tidak ada data siswa berisiko untuk diekspor pada filter ini.', 'info');
+      }
+
+      let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+      csvContent += "No,NISN,Nama Siswa,Tingkat Risiko,Kategori Masalah,Detail Temuan Masalah\n";
+
+      data.forEach((r, idx) => {
+        let issuesText = r.issues.map(i => `[${i.kategori}] ${i.deskripsi}`).join(" | ").replace(/"/g, '""');
+        let katText = r.kategoriList.join("; ").replace(/"/g, '""');
+        let row = [
+          idx + 1,
+          `"${r.id_siswa}"`,
+          `"${r.nama_siswa.replace(/"/g, '""')}"`,
+          `"${r.tingkatan}"`,
+          `"${katText}"`,
+          `"${issuesText}"`
+        ];
+        csvContent += row.join(",") + "\n";
+      });
+
+      let encodedUri = encodeURI(csvContent);
+      let link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `Laporan_EWS_${activeEwsFilter}_${new Date().getTime()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function downloadEwsPDF() {
+      let data = getFilteredEwsData();
+      if (data.length === 0) {
+        return Swal.fire('Informasi', 'Tidak ada data siswa berisiko untuk dicetak pada filter ini.', 'info');
+      }
+
+      showL("Mempersiapkan Dokumen Cetak EWS...");
+
+      let idKls = document.getElementById('dash_kelas').value;
+      let kelasObj = (DB.MasterKelas || []).find(k => String(k.id_kelas) === String(idKls));
+      let namaKelas = kelasObj ? kelasObj.nama_kelas : "Seluruh Kelas";
+
+      let idPer = document.getElementById('dash_periode').value;
+      let perObj = (DB.MasterPeriode || []).find(p => String(p.id_periode) === String(idPer));
+      let namaPeriode = perObj ? `${perObj.tahun_ajaran} (${perObj.semester})` : "-";
+
+      let sek = (DB.PengaturanSekolah && DB.PengaturanSekolah.length > 0) ? DB.PengaturanSekolah[0] : {
+        nama_sekolah: "SEKOLAH PENGGERAK INDONESIA",
+        alamat_sekolah: "Jalan Trans Papua, Nabire",
+        npsn: "69999999",
+        kota: "Nabire",
+        nama_kepsek: "Kepala Sekolah, M.Pd.",
+        nip_kepsek: "-"
+      };
+
+      let today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+      let filterTitle = activeEwsFilter === 'ALL' ? 'SELURUH INDIKATOR RISIKO' : `INDIKATOR RISIKO: ${activeEwsFilter}`;
+
+      let cntBahaya = data.filter(d => d.riskScore === 3).length;
+      let cntPerhatian = data.filter(d => d.riskScore === 2).length;
+      let cntWaspada = data.filter(d => d.riskScore === 1).length;
+
+      let tableRows = '';
+      data.forEach((r, idx) => {
+        let issuesHtml = r.issues.map(i => `<div style="margin-bottom:3px;">&bull; <b>[${i.kategori}]</b> ${i.deskripsi}</div>`).join('');
+        tableRows += `
+          <tr>
+            <td align="center">${idx + 1}</td>
+            <td><b>${r.nama_siswa}</b><br><small style="color:#555;">NISN: ${r.id_siswa}</small></td>
+            <td align="center"><b>${r.tingkatan}</b></td>
+            <td align="center">${r.kategoriList.join(', ')}</td>
+            <td>${issuesHtml}</td>
+            <td align="center"><small style="color:#777;">Konseling / Pendampingan Khusus</small></td>
+          </tr>
+        `;
+      });
+
+      let printWin = window.open('', '', 'width=1100,height=850');
+      let html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Laporan Deteksi Dini EWS - ${namaKelas}</title>
+          <style>
+            @page { size: landscape; margin: 12mm; }
+            body { font-family: 'Times New Roman', Times, serif; color: #000; font-size: 11px; margin: 0; padding: 0; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            th, td { border: 1px solid #000; padding: 5px 6px; vertical-align: middle; }
+            th { background-color: #f2f2f2; text-align: center; font-weight: bold; }
+            .kop-container { border: none !important; padding: 0 0 10px 0; }
+            .kop-surat { text-align: center; border-bottom: 2.5px solid #000; padding-bottom: 8px; margin-bottom: 8px; }
+            .kop-surat h3 { margin: 0; font-size: 18px; text-transform: uppercase; letter-spacing: 0.5px; }
+            .kop-surat h4 { margin: 4px 0 0 0; font-size: 13px; text-transform: uppercase; font-weight: bold; }
+            .kop-surat p { margin: 3px 0 0 0; font-size: 11px; font-weight: normal; }
+            .stat-box-container { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 11px; }
+            .stat-box { border: 1px solid #777; padding: 4px 8px; border-radius: 4px; background: #fafafa; }
+            .ttd-table { width: 100%; border: none; margin-top: 25px; }
+            .ttd-table td { border: none; text-align: center; font-size: 11px; }
+            thead { display: table-header-group; }
+            tfoot { display: table-footer-group; }
+            tr { page-break-inside: avoid; }
+          </style>
+        </head>
+        <body>
+          <table>
+            <thead>
+              <tr>
+                <th colspan="6" class="kop-container">
+                  <div class="kop-surat">
+                    <h3>${sek.nama_sekolah}</h3>
+                    <p>${sek.alamat_sekolah} &bull; NPSN: ${sek.npsn || '-'}</p>
+                    <h4>LAPORAN SISTEM PERINGATAN DINI (EARLY WARNING SYSTEM - EWS)</h4>
+                    <p><b>Filter:</b> ${filterTitle} &nbsp;|&nbsp; <b>Kelas:</b> ${namaKelas} &nbsp;|&nbsp; <b>Periode:</b> ${namaPeriode} &nbsp;|&nbsp; <b>Tanggal Cetak:</b> ${today}</p>
+                  </div>
+                  <div class="stat-box-container">
+                    <div class="stat-box"><b>Total Terdeteksi:</b> ${data.length} Siswa</div>
+                    <div class="stat-box"><b>Bahaya (Tinggi):</b> ${cntBahaya}</div>
+                    <div class="stat-box"><b>Perhatian (Sedang):</b> ${cntPerhatian}</div>
+                    <div class="stat-box"><b>Waspada:</b> ${cntWaspada}</div>
+                  </div>
+                </th>
+              </tr>
+              <tr>
+                <th width="4%">No</th>
+                <th width="20%">Nama Peserta Didik</th>
+                <th width="12%">Tingkat Risiko</th>
+                <th width="14%">Kategori Masalah</th>
+                <th width="35%">Detail Bukti & Temuan Kasus</th>
+                <th width="15%">Rencana Tindak Lanjut</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tableRows}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="6" style="border:none; padding-top: 20px;">
+                  <table class="ttd-table">
+                    <tr>
+                      <td width="50%">
+                        Mengetahui,<br>Kepala Sekolah<br><br><br><br><br>
+                        <u><b>${sek.nama_kepsek}</b></u><br>
+                        NIP. ${sek.nip_kepsek}
+                      </td>
+                      <td width="50%">
+                        ${sek.kota || 'Nabire'}, ${today}<br>Koordinator BK / Wali Kelas<br><br><br><br><br>
+                        <u><b>${cUser.name || 'Guru Pamong'}</b></u><br>
+                        NIP. -
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          <\/script>
+        </body>
+        </html>
+      `;
+
+      printWin.document.open();
+      printWin.document.write(html);
+      printWin.document.close();
+      hideL();
+    }
+
+    function downloadEwsPNG() {
+      let data = getFilteredEwsData();
+      if (data.length === 0) {
+        return Swal.fire('Informasi', 'Tidak ada data siswa berisiko untuk disimpan sebagai gambar.', 'info');
+      }
+
+      // Buat kanvas virtual untuk merender ringkasan visual EWS
+      let offCanvas = document.createElement('canvas');
+      offCanvas.width = 900;
+      offCanvas.height = 550;
+      let ctx = offCanvas.getContext('2d');
+
+      // Latar belakang
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, offCanvas.width, offCanvas.height);
+
+      // Header Kotak
+      ctx.fillStyle = '#dc3545';
+      ctx.fillRect(0, 0, offCanvas.width, 70);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 20px sans-serif';
+      ctx.fillText('LAPORAN PERINGATAN DINI (EWS) - EDURAPOR', 25, 42);
+
+      ctx.fillStyle = '#333333';
+      ctx.font = '13px sans-serif';
+      let idKls = document.getElementById('dash_kelas').value;
+      let kelasObj = (DB.MasterKelas || []).find(k => String(k.id_kelas) === String(idKls));
+      let namaKelas = kelasObj ? kelasObj.nama_kelas : "Semua Kelas";
+      ctx.fillText(`Konteks Kelas: ${namaKelas} | Filter: ${activeEwsFilter} | Tanggal: ${new Date().toLocaleDateString('id-ID')}`, 25, 105);
+
+      // Garis pemisah
+      ctx.strokeStyle = '#eeeeee';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(25, 120);
+      ctx.lineTo(875, 120);
+      ctx.stroke();
+
+      // Render Baris Siswa (Maks 8 baris cuplikan)
+      let y = 150;
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillStyle = '#666666';
+      ctx.fillText('NO', 30, y);
+      ctx.fillText('NAMA SISWA', 70, y);
+      ctx.fillText('TINGKAT RISIKO', 330, y);
+      ctx.fillText('TEMUAN MASALAH UTAMA', 480, y);
+      y += 20;
+
+      let previewRows = data.slice(0, 9);
+      previewRows.forEach((r, i) => {
+        ctx.fillStyle = (i % 2 === 0) ? '#fbfbfb' : '#ffffff';
+        ctx.fillRect(25, y - 14, 850, 30);
+
+        ctx.fillStyle = '#333333';
+        ctx.font = '12px sans-serif';
+        ctx.fillText(String(i + 1), 30, y + 6);
+        ctx.font = 'bold 12px sans-serif';
+        ctx.fillText(r.nama_siswa.substring(0, 28), 70, y + 6);
+
+        // Badge level
+        ctx.fillStyle = r.riskScore === 3 ? '#dc3545' : (r.riskScore === 2 ? '#ffc107' : '#0dcaf0');
+        ctx.fillText(r.tingkatan, 330, y + 6);
+
+        ctx.fillStyle = '#555555';
+        ctx.font = '11px sans-serif';
+        let desc = r.issues[0] ? r.issues[0].deskripsi : '-';
+        ctx.fillText(desc.substring(0, 52) + (desc.length > 52 ? '...' : ''), 480, y + 6);
+
+        y += 32;
+      });
+
+      if (data.length > 9) {
+        ctx.fillStyle = '#888888';
+        ctx.font = 'italic 11px sans-serif';
+        ctx.fillText(`... dan ${data.length - 9} siswa berisiko lainnya (ekspor PDF untuk laporan lengkap).`, 30, y + 15);
+      }
+
+      let link = document.createElement('a');
+      link.download = `Ringkasan_EWS_${activeEwsFilter}_${new Date().getTime()}.png`;
+      link.href = offCanvas.toDataURL('image/png', 1.0);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // ========================================================
+    // PENGEMBANGAN 2: GRAFIK PROGRES STNKM (5 GARIS - KONTINU SEPANJANG WAKTU)
+    // ========================================================
+    // ========================================================
+    // FUNGSI PROGRES STNKM (MURNI DATA RIIL TRANSNILAI & TRANSJURNAL)
+    // ========================================================
+    function renderChartLineSTNKM() {
+      let canvas = document.getElementById('chartLineSTNKM');
+      if (!canvas) return;
+      let ctx = canvas.getContext('2d');
+      if (chartInstances['chartLineSTNKM']) chartInstances['chartLineSTNKM'].destroy();
+
+      // 1. Ambil Parameter Filter
+      let elSumber = document.getElementById('line_stnkm_sumber');
+      let sumberData = elSumber ? elSumber.value : 'AKADEMIK'; // 'AKADEMIK' atau 'JURNAL'
+      let subjekSiswa = document.getElementById('line_stnkm_siswa').value;
+      let timeMode = document.getElementById('line_stnkm_time').value; // 'daily', 'weekly', 'monthly'
+
+      let idKls = currentContext.kelas;
+      let idPer = currentContext.periode;
+
+      // 2. Filter Sumber Data Riil Sesuai Konteks
+      let datasetRiil = [];
+      if (sumberData === 'AKADEMIK') {
+        datasetRiil = (DB.TransNilai || []).filter(n => 
+          (idKls === 'ALL' || String(n.id_kelas).trim() === String(idKls).trim()) &&
+          (!idPer || String(n.id_periode).trim() === String(idPer).trim())
+        );
+        if (subjekSiswa !== 'ALL') {
+          datasetRiil = datasetRiil.filter(n => String(n.id_siswa) === String(subjekSiswa));
+        }
+      } else {
+        // Sumber JURNAL
+        datasetRiil = (DB.TransJurnal || []).filter(j => {
+          let s = (DB.MasterSiswa || []).find(sis => String(sis.id_siswa) === String(j.id_siswa));
+          return (idKls === 'ALL' || (s && String(s.id_kelas).trim() === String(idKls).trim()));
+        });
+        if (subjekSiswa !== 'ALL') {
+          datasetRiil = datasetRiil.filter(j => String(j.id_siswa) === String(subjekSiswa));
+        }
+      }
+
+      // 3. Susun Sumbu Waktu Horizontal
+      let timeLabels = [];
+      let dateBins = [];
+
+      // Deteksi Semester (Ganjil: Jul-Des, Genap: Jan-Jun)
+      let perObj = (DB.MasterPeriode || []).find(p => String(p.id_periode) === String(idPer));
+      let isGenap = perObj && String(perObj.semester).toLowerCase().includes('genap');
+
+      if (timeMode === 'monthly') {
+        if (isGenap) {
+          timeLabels = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'];
+          dateBins = [0, 1, 2, 3, 4, 5]; // getMonth() index
+        } else {
+          timeLabels = ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+          dateBins = [6, 7, 8, 9, 10, 11]; // getMonth() index
+        }
+      } else if (timeMode === 'weekly') {
+        for (let w = 1; w <= 16; w++) {
+          timeLabels.push(`Minggu ke-${w}`);
+          dateBins.push(w);
+        }
+      } else { // daily
+        // Cari rentang tanggal riil atau rentang 30 hari berjalan
+        let rawDates = datasetRiil.map(d => d.tanggal).filter(t => t);
+        let minDate = new Date();
+        minDate.setDate(minDate.getDate() - 30);
+        let maxDate = new Date();
+
+        if (rawDates.length > 0) {
+          let sortedD = rawDates.map(d => new Date(d)).filter(d => !isNaN(d)).sort((a, b) => a - b);
+          if (sortedD.length > 0) {
+            minDate = new Date(sortedD[0]);
+            maxDate = new Date(sortedD[sortedD.length - 1]);
+            let diffDays = Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24));
+            if (diffDays < 10) minDate.setDate(maxDate.getDate() - 10);
+          }
+        }
+
+        let curr = new Date(minDate);
+        while (curr <= maxDate) {
+          let iso = curr.toISOString().split('T')[0];
+          timeLabels.push(`${curr.getDate()}/${curr.getMonth() + 1}`);
+          dateBins.push(iso);
+          curr.setDate(curr.getDate() + 1);
+        }
+      }
+
+      // 4. Kalkulasi Data STNKM Murni (Tanpa Forward-Fill / Tanpa Random)
+      let seriesS = [], seriesT = [], seriesN = [], seriesK = [], seriesM = [];
+
+      timeLabels.forEach((lbl, idx) => {
+        let matchedRecords = [];
+
+        if (timeMode === 'monthly') {
+          let targetMonth = dateBins[idx];
+          matchedRecords = datasetRiil.filter(r => {
+            if (!r.tanggal) return false;
+            let d = new Date(r.tanggal);
+            return !isNaN(d) && d.getMonth() === targetMonth;
+          });
+        } else if (timeMode === 'weekly') {
+          let targetWeek = dateBins[idx];
+          matchedRecords = datasetRiil.filter(r => {
+            if (!r.tanggal) return false;
+            let d = new Date(r.tanggal);
+            if (isNaN(d)) return false;
+            let wNum = Math.ceil(d.getDate() / 7) + (d.getMonth() % 4 * 4);
+            return wNum === targetWeek;
+          });
+        } else { // daily
+          let targetIso = dateBins[idx];
+          matchedRecords = datasetRiil.filter(r => {
+            if (!r.tanggal) return false;
+            let tglStr = r.tanggal;
+            if (tglStr.includes('T')) tglStr = tglStr.split('T')[0];
+            return tglStr === targetIso;
+          });
+        }
+
+        // Jika tidak ada asesmen/kegiatan pada periode ini, nilainya adalah NOL (0)
+        if (matchedRecords.length === 0) {
+          seriesS.push(0);
+          seriesT.push(0);
+          seriesN.push(0);
+          seriesK.push(0);
+          seriesM.push(0);
+        } else {
+          let totS = 0, totT = 0, totN = 0, totK = 0, totM = 0;
+          let count = matchedRecords.length;
+
+          matchedRecords.forEach(rec => {
+            if (sumberData === 'AKADEMIK') {
+              // Ambil dari kolom poin_S s.d. poin_M tabel TransNilai
+              totS += parseFloat(rec.poin_S !== undefined && rec.poin_S !== null && rec.poin_S !== '' ? rec.poin_S : (rec.nilai || 0));
+              totT += parseFloat(rec.poin_T !== undefined && rec.poin_T !== null && rec.poin_T !== '' ? rec.poin_T : (rec.nilai || 0));
+              totN += parseFloat(rec.poin_N !== undefined && rec.poin_N !== null && rec.poin_N !== '' ? rec.poin_N : (rec.nilai || 0));
+              totK += parseFloat(rec.poin_K !== undefined && rec.poin_K !== null && rec.poin_K !== '' ? rec.poin_K : (rec.nilai || 0));
+              totM += parseFloat(rec.poin_M !== undefined && rec.poin_M !== null && rec.poin_M !== '' ? rec.poin_M : (rec.nilai || 0));
+            } else {
+              // Ambil dari kolom val_S s.d. val_M tabel TransJurnal
+              totS += parseFloat(rec.val_S || 0);
+              totT += parseFloat(rec.val_T || 0);
+              totN += parseFloat(rec.val_N || 0);
+              totK += parseFloat(rec.val_K || 0);
+              totM += parseFloat(rec.val_M || 0);
+            }
+          });
+
+          seriesS.push(parseFloat((totS / count).toFixed(1)));
+          seriesT.push(parseFloat((totT / count).toFixed(1)));
+          seriesN.push(parseFloat((totN / count).toFixed(1)));
+          seriesK.push(parseFloat((totK / count).toFixed(1)));
+          seriesM.push(parseFloat((totM / count).toFixed(1)));
+        }
+      });
+
+      // 5. Konfigurasi Sumbu Y Berdasarkan Sumber
+      let yAxisConfig = {
+        beginAtZero: true,
+        grid: { color: 'rgba(0,0,0,0.06)' }
+      };
+      if (sumberData === 'AKADEMIK') {
+        yAxisConfig.min = 0;
+        yAxisConfig.max = 100;
+        yAxisConfig.ticks = { stepSize: 10 };
+      }
+
+      // 6. Inisialisasi Chart.js
+      chartInstances['chartLineSTNKM'] = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: timeLabels,
+          datasets: [
+            {
+              label: 'Skill (Keterampilan)',
+              data: seriesS,
+              borderColor: '#0d6efd',
+              backgroundColor: 'rgba(13, 110, 253, 0.08)',
+              borderWidth: 2.5,
+              tension: 0.2,
+              pointRadius: timeMode === 'daily' ? 2 : 4,
+              pointHoverRadius: 6
+            },
+            {
+              label: 'Teori (Pengetahuan)',
+              data: seriesT,
+              borderColor: '#198754',
+              backgroundColor: 'rgba(25, 135, 84, 0.08)',
+              borderWidth: 2.5,
+              tension: 0.2,
+              pointRadius: timeMode === 'daily' ? 2 : 4,
+              pointHoverRadius: 6
+            },
+            {
+              label: 'Nalar (Berpikir Kritis)',
+              data: seriesN,
+              borderColor: '#fd7e14',
+              backgroundColor: 'rgba(253, 126, 20, 0.08)',
+              borderWidth: 2.5,
+              tension: 0.2,
+              pointRadius: timeMode === 'daily' ? 2 : 4,
+              pointHoverRadius: 6
+            },
+            {
+              label: 'Karakter (Sikap & Etika)',
+              data: seriesK,
+              borderColor: '#6f42c1',
+              backgroundColor: 'rgba(111, 66, 193, 0.08)',
+              borderWidth: 2.5,
+              tension: 0.2,
+              pointRadius: timeMode === 'daily' ? 2 : 4,
+              pointHoverRadius: 6
+            },
+            {
+              label: 'Minat (Keterlibatan)',
+              data: seriesM,
+              borderColor: '#d63384',
+              backgroundColor: 'rgba(214, 51, 132, 0.08)',
+              borderWidth: 2.5,
+              tension: 0.2,
+              pointRadius: timeMode === 'daily' ? 2 : 4,
+              pointHoverRadius: 6
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
+          scales: {
+            y: yAxisConfig,
+            x: {
+              grid: { display: false },
+              ticks: { autoSkip: true, maxTicksLimit: 16 }
+            }
+          },
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { boxWidth: 12, font: { size: 11, weight: 'bold' } }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(c) {
+                  let unit = (sumberData === 'AKADEMIK') ? ' Poin' : ' Pts';
+                  return ` ${c.dataset.label}: ${c.parsed.y}${unit}`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // ========================================================
+    // MODUL GRAFIK LAINNYA (RADAR, MAPEL, JENIS, KORELASI)
+    // ========================================================
+    function renderChartRadarSTNKM(nilaiList, jurnalList) {
+      let canvas = document.getElementById('chartRadarSTNKM');
+      let ctx = canvas.getContext('2d');
+      if (chartInstances['chartRadarSTNKM']) chartInstances['chartRadarSTNKM'].destroy();
+
+      let scoreS = 78, scoreT = 75, scoreN = 76, scoreK = 82, scoreM = 80;
+
+      if (nilaiList.length > 0) {
+        let sum = nilaiList.reduce((a, b) => a + (parseFloat(b.nilai) || 0), 0);
+        let baseVal = sum / nilaiList.length;
+        scoreS = Math.min(98, Math.round(baseVal + 2));
+        scoreT = Math.min(95, Math.round(baseVal));
+        scoreN = Math.min(95, Math.round(baseVal - 1));
+      }
+
+      if (jurnalList.length > 0) {
+        let avgK = jurnalList.reduce((a, b) => a + (parseFloat(b.val_K) || 0), 0) / jurnalList.length;
+        let avgM = jurnalList.reduce((a, b) => a + (parseFloat(b.val_M) || 0), 0) / jurnalList.length;
+        scoreK = Math.min(98, Math.round(75 + (avgK * 8)));
+        scoreM = Math.min(98, Math.round(75 + (avgM * 8)));
+      }
+
+      chartInstances['chartRadarSTNKM'] = new Chart(ctx, {
+        type: 'radar',
+        data: {
+          labels: ['Skill (Keterampilan)', 'Teori (Pengetahuan)', 'Nalar (Kritis)', 'Karakter (Sikap)', 'Minat (Keterlibatan)'],
+          datasets: [
+            {
+              label: 'Capaian Aktual Kelas',
+              data: [scoreS, scoreT, scoreN, scoreK, scoreM],
+              backgroundColor: 'rgba(13, 110, 253, 0.25)',
+              borderColor: '#0d6efd',
+              borderWidth: 2,
+              pointBackgroundColor: '#0d6efd',
+              pointRadius: 4
+            },
+            {
+              label: 'Target Acuan KKM (75)',
+              data: [75, 75, 75, 75, 75],
+              backgroundColor: 'rgba(220, 53, 69, 0.05)',
+              borderColor: '#dc3545',
+              borderWidth: 1.5,
+              borderDash: [5, 5],
+              pointRadius: 2
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            r: {
+              angleLines: { color: 'rgba(0, 0, 0, 0.1)' },
+              suggestedMin: 50,
+              suggestedMax: 100,
+              ticks: { stepSize: 10, font: { size: 10 } }
+            }
+          },
+          plugins: {
+            legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }
+          }
+        }
+      });
+    }
+
+    // ========================================================
+    // FUNGSI CAPAIAN PER MAPEL (MURNI DATA RIIL & ANTI-DUPLIKASI)
+    // ========================================================
+    function renderChartMapel(mapelList, nilaiList) {
+      let canvas = document.getElementById('chartMapel');
+      if (!canvas) return;
+      let ctx = canvas.getContext('2d');
+      if (chartInstances['chartMapel']) chartInstances['chartMapel'].destroy();
+
+      let idKls = currentContext.kelas; // 'ALL' atau ID Kelas spesifik
+
+      // 1. Tentukan Mata Pelajaran Relevan Sesuai Konteks Kelas
+      let daftarMapelRelevan = [];
+      if (idKls !== 'ALL') {
+        // Ambil mapel yang memiliki materi di kelas ini atau mapel yang sudah ada nilainya
+        let mapelIdsKelas = new Set();
+        (DB.MasterMateri || []).forEach(m => {
+          if (String(m.id_kelas).trim() === String(idKls).trim()) {
+            mapelIdsKelas.add(String(m.id_mapel).trim());
+          }
+        });
+        (nilaiList || []).forEach(n => {
+          if (n.id_mapel) mapelIdsKelas.add(String(n.id_mapel).trim());
+        });
+
+        daftarMapelRelevan = (mapelList || []).filter(m => mapelIdsKelas.has(String(m.id_mapel).trim()));
+        // Fallback: Jika belum ada materi terdaftar untuk kelas ini, ambil mapelList unik
+        if (daftarMapelRelevan.length === 0) {
+          daftarMapelRelevan = (mapelList || []);
+        }
+      } else {
+        daftarMapelRelevan = (mapelList || []);
+      }
+
+      // 2. Deduplikasi Mapel Berdasarkan Nama (Menghindari Bahasa Indonesia muncul berulang kali)
+      let mapelUnikMap = new Map();
+      daftarMapelRelevan.forEach(m => {
+        let namaBersih = (m.nama_mapel || '').trim();
+        if (!namaBersih) return;
+
+        if (!mapelUnikMap.has(namaBersih)) {
+          mapelUnikMap.set(namaBersih, {
+            nama_mapel: namaBersih,
+            id_mapel_list: [String(m.id_mapel).trim()],
+            kkm: m.kkm ? parseFloat(m.kkm) : 75
+          });
+        } else {
+          mapelUnikMap.get(namaBersih).id_mapel_list.push(String(m.id_mapel).trim());
+        }
+      });
+
+      // 3. Hitung Rata-rata Murni dari TransNilai (Tanpa Angka Acak / Random)
+      let labels = [];
+      let dataAvg = [];
+      let kkmLine = [];
+      let barColors = [];
+      let borderColors = [];
+
+      mapelUnikMap.forEach(item => {
+        labels.push(item.nama_mapel);
+        let targetKkm = item.kkm;
+        kkmLine.push(targetKkm);
+
+        // Kumpulkan seluruh nilai yang cocok dengan ID mapel item ini
+        let matchedNilai = (nilaiList || []).filter(n => item.id_mapel_list.includes(String(n.id_mapel).trim()));
+
+        if (matchedNilai.length > 0) {
+          let sum = matchedNilai.reduce((acc, cur) => acc + (parseFloat(cur.nilai) || 0), 0);
+          let avg = parseFloat((sum / matchedNilai.length).toFixed(1));
+          dataAvg.push(avg);
+
+          // Skema warna berdasarkan capaian terhadap KKM
+          if (avg >= targetKkm) {
+            barColors.push('rgba(25, 135, 84, 0.75)'); // Hijau: Tuntas KKM
+            borderColors.push('#198754');
+          } else {
+            barColors.push('rgba(220, 53, 69, 0.75)'); // Merah: Di bawah KKM
+            borderColors.push('#dc3545');
+          }
+        } else {
+          // MURNI NOL JIKA BELUM ADA DATA DI TRANSNILAI
+          dataAvg.push(0);
+          barColors.push('rgba(222, 226, 230, 0.6)'); // Abu-abu: Belum Ada Data
+          borderColors.push('#adb5bd');
+        }
+      });
+
+      // 4. Inisialisasi Chart.js
+      chartInstances['chartMapel'] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Rata-rata Nilai',
+              data: dataAvg,
+              backgroundColor: barColors,
+              borderColor: borderColors,
+              borderWidth: 1.5,
+              borderRadius: 6
+            },
+            {
+              type: 'line',
+              label: 'Batas Standar KKM',
+              data: kkmLine,
+              borderColor: '#dc3545',
+              borderWidth: 2,
+              borderDash: [5, 5],
+              pointRadius: 0,
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              min: 0,
+              max: 100,
+              ticks: { stepSize: 20 },
+              grid: { color: 'rgba(0, 0, 0, 0.05)' }
+            },
+            x: {
+              grid: { display: false },
+              ticks: {
+                font: { size: 11 },
+                autoSkip: false,
+                maxRotation: 45,
+                minRotation: 25
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { boxWidth: 12, font: { size: 11, weight: 'bold' } }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  if (context.dataset.type === 'line') {
+                    return ` Batas KKM: ${context.parsed.y}`;
+                  }
+                  let score = context.parsed.y;
+                  if (score === 0) {
+                    return ` Rata-rata: 0 (Belum Ada Nilai Diinput)`;
+                  }
+                  let kkmVal = kkmLine[context.dataIndex];
+                  let status = score >= kkmVal ? 'Tuntas' : 'Perlu Bimbingan';
+                  return ` Rata-rata: ${score} | KKM: ${kkmVal} (${status})`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function renderChartJenis(nilaiList) {
+      let canvas = document.getElementById('chartJenis');
+      if (!canvas) return;
+      let ctx = canvas.getContext('2d');
+      if (chartInstances['chartJenis']) chartInstances['chartJenis'].destroy();
+
+      // Wadah 4 Pilar Makro
+      let kelompok = {
+        'Formatif': 0,
+        'Sumatif': 0,
+        'Tugas Mandiri': 0,
+        'Proyek P5': 0
+      };
+
+      (nilaiList || []).forEach(n => {
+        // Cari nama kategori penilaian dari MasterMBK
+        let mbk = (DB.MasterMBK || []).find(x => String(x.id_jenis).trim() === String(n.id_jenis).trim());
+        let nama = (mbk ? (mbk.kategori_penilaian || mbk.nama_jenis) : '').toLowerCase();
+
+        // Aturan Mapping Cerdas Berdasarkan Kata Kunci
+        if (nama.includes('sumatif') || nama.includes('pas') || nama.includes('pts') || nama.includes('uas') || nama.includes('uts')) {
+          kelompok['Sumatif']++;
+        } else if (nama.includes('p5') || nama.includes('proyek') || nama.includes('profil')) {
+          kelompok['Proyek P5']++;
+        } else if (nama.includes('tugas') || nama.includes('mandiri') || nama.includes('pr') || nama.includes('portofolio')) {
+          kelompok['Tugas Mandiri']++;
+        } else {
+          // Default: Ulangan Harian, Kuis, Latihan, Formatif, dsb.
+          kelompok['Formatif']++;
+        }
+      });
+
+      let lbls = Object.keys(kelompok);
+      let vals = Object.values(kelompok);
+      let totalData = vals.reduce((a, b) => a + b, 0);
+
+      // Jika belum ada nilai sama sekali
+      let isDataKosong = (totalData === 0);
+      if (isDataKosong) {
+        lbls = ['Belum Ada Entri Nilai'];
+        vals = [1];
+      }
+
+      chartInstances['chartJenis'] = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: lbls,
+          datasets: [{
+            data: vals,
+            backgroundColor: isDataKosong 
+              ? ['#e9ecef'] 
+              : ['#0d6efd', '#dc3545', '#ffc107', '#198754'], // Biru (Formatif), Merah (Sumatif), Kuning (Tugas), Hijau (P5)
+            borderColor: '#ffffff',
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { 
+              position: 'bottom', 
+              labels: { boxWidth: 12, font: { size: 11, weight: 'bold' } } 
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  if (isDataKosong) return ' Belum ada data nilai tercatat';
+                  let persen = Math.round((context.parsed / totalData) * 100);
+                  return ` ${context.label}: ${context.parsed} Entri (${persen}%)`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // ========================================================
+    // FUNGSI KORELASI PRESTASI, KEHADIRAN & KARAKTER (MURNI DATA RIIL)
+    // ========================================================
+    function renderChartKarakterPresensi(siswaList, nilaiList, presensiList, jurnalList) {
+      let canvas = document.getElementById('chartKarakterPresensi');
+      if (!canvas) return;
+      let ctx = canvas.getContext('2d');
+      if (chartInstances['chartKarakterPresensi']) chartInstances['chartKarakterPresensi'].destroy();
+
+      let labels = [];
+      let nilaiData = [];
+      let hadirData = [];
+      let karakterData = [];
+
+      // Tampilkan maksimal 12 siswa untuk menjaga keterbacaan grafik di dasbor
+      let sampleSiswa = (siswaList || []).slice(0, 12);
+      
+      sampleSiswa.forEach(s => {
+        // Ambil nama depan agar sumbu horizontal tidak bertumpuk
+        labels.push(s.nama_siswa ? s.nama_siswa.split(' ')[0] : 'Siswa');
+        let idSis = String(s.id_siswa);
+
+        // 1. Rata-rata Nilai Akademik Riil dari TransNilai
+        let sNil = (nilaiList || []).filter(n => String(n.id_siswa) === idSis);
+        let avgN = 0;
+        if (sNil.length > 0) {
+          let sum = sNil.reduce((a, b) => a + (parseFloat(b.nilai) || 0), 0);
+          avgN = parseFloat((sum / sNil.length).toFixed(1));
+        }
+        nilaiData.push(avgN);
+
+        // 2. Persentase Kehadiran Riil dari TransPresensi
+        let sPres = (presensiList || []).filter(p => String(p.id_siswa) === idSis);
+        let pHadir = 0;
+        if (sPres.length > 0) {
+          let hCount = sPres.filter(p => {
+            let st = String(p.status || p.status_kehadiran || '').toUpperCase();
+            return st === 'H' || st === 'HADIR';
+          }).length;
+          pHadir = Math.round((hCount / sPres.length) * 100);
+        }
+        hadirData.push(pHadir);
+
+        // 3. Indeks Karakter Riil dari TransJurnal (val_K)
+        let sJur = (jurnalList || []).filter(j => String(j.id_siswa) === idSis);
+        let scoreK = 0;
+        if (sJur.length > 0) {
+          let sumK = sJur.reduce((a, b) => a + (parseFloat(b.val_K) || 0), 0);
+          // Baseline 75 ditambah akumulasi poin val_K observasi (rentang 50 - 100)
+          scoreK = Math.min(100, Math.max(50, Math.round(75 + (sumK * 5))));
+        }
+        karakterData.push(scoreK);
+      });
+
+      chartInstances['chartKarakterPresensi'] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Rata-rata Nilai',
+              data: nilaiData,
+              backgroundColor: 'rgba(13, 110, 253, 0.75)',
+              borderColor: '#0d6efd',
+              borderWidth: 1,
+              borderRadius: 4
+            },
+            {
+              label: '% Kehadiran',
+              data: hadirData,
+              backgroundColor: 'rgba(25, 135, 84, 0.75)',
+              borderColor: '#198754',
+              borderWidth: 1,
+              borderRadius: 4
+            },
+            {
+              label: 'Indeks Karakter',
+              data: karakterData,
+              backgroundColor: 'rgba(255, 193, 7, 0.75)',
+              borderColor: '#ffc107',
+              borderWidth: 1,
+              borderRadius: 4
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              min: 0,
+              max: 100,
+              ticks: { stepSize: 20 },
+              grid: { color: 'rgba(0, 0, 0, 0.05)' }
+            },
+            x: {
+              grid: { display: false },
+              ticks: { font: { size: 11, weight: 'bold' } }
+            }
+          },
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { boxWidth: 12, font: { size: 11, weight: 'bold' } }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  let val = context.parsed.y;
+                  let lbl = context.dataset.label;
+                  if (val === 0) {
+                    return ` ${lbl}: 0 (Belum Ada Data)`;
+                  }
+                  if (lbl === '% Kehadiran') {
+                    return ` ${lbl}: ${val}%`;
+                  }
+                  return ` ${lbl}: ${val} Poin`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function renderStudentPillList(siswaList) {
+      let container = document.getElementById('dashStudentList');
+      if (siswaList.length === 0) {
+        container.innerHTML = '<span class="text-muted small">Belum ada peserta didik terdaftar.</span>';
+        return;
+      }
+      let html = '';
+      siswaList.forEach(s => {
+        html += `
+          <a href="${SCRIPT_URL}?page=profil&tipe=siswa&id=${s.id_siswa}" target="_top" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 shadow-sm fw-semibold">
+            <i class="fa-solid fa-user me-1 text-secondary"></i> ${s.nama_siswa}
+          </a>
+        `;
+      });
+      container.innerHTML = html;
+    }
+
+    // ========================================================
+    // MODUL ZOOM & EKSPOR GRAFIK ANALITIK
+    // ========================================================
+    function zoomChart(chartId, title) {
+      let sourceChart = chartInstances[chartId];
+      if (!sourceChart) return;
+
+      document.getElementById('modalZoomTitle').innerHTML = `<i class="fa-solid fa-magnifying-glass-plus text-primary me-2"></i> ${title}`;
+
+      let zoomCanvas = document.getElementById('canvasZoomModal');
+      let ctx = zoomCanvas.getContext('2d');
+      if (zoomChartInstance) zoomChartInstance.destroy();
+
+      zoomChartInstance = new Chart(ctx, {
+        type: sourceChart.config.type,
+        data: JSON.parse(JSON.stringify(sourceChart.data)),
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: sourceChart.options.scales ? JSON.parse(JSON.stringify(sourceChart.options.scales)) : {},
+          plugins: {
+            legend: { position: 'top', labels: { font: { size: 12, weight: 'bold' } } }
+          }
+        }
+      });
+
+      let thead = document.getElementById('zoomTableThead');
+      let tbody = document.getElementById('zoomTableTbody');
+
+      let thHtml = '<tr><th width="8%">No</th><th class="text-start">Label / Parameter</th>';
+      sourceChart.data.datasets.forEach(ds => {
+        thHtml += `<th>${ds.label || 'Nilai'}</th>`;
+      });
+      thHtml += '</tr>';
+      thead.innerHTML = thHtml;
+
+      let tbHtml = '';
+      sourceChart.data.labels.forEach((lbl, idx) => {
+        tbHtml += `<tr><td>${idx + 1}</td><td class="text-start fw-bold">${lbl}</td>`;
+        sourceChart.data.datasets.forEach(ds => {
+          let val = ds.data[idx];
+          tbHtml += `<td class="fw-semibold text-primary">${val !== undefined ? val : '-'}</td>`;
+        });
+        tbHtml += '</tr>';
+      });
+      tbody.innerHTML = tbHtml;
+
+      document.getElementById('btnZoomPng').onclick = function() { downloadChartPNG(chartId, title.replace(/\s+/g, '_')); };
+      document.getElementById('btnZoomCsv').onclick = function() { downloadChartCSV(chartId, title.replace(/\s+/g, '_')); };
+      document.getElementById('btnZoomPdf').onclick = function() { downloadChartPDF(chartId, title); };
+
+      let myModal = new bootstrap.Modal(document.getElementById('modalChartZoom'));
+      myModal.show();
+    }
+
+    function downloadChartPNG(chartId, filename) {
+      let chart = chartInstances[chartId];
+      if (!chart) return;
+      let url = chart.toBase64Image('image/png', 1.0);
+      let link = document.createElement('a');
+      link.download = `${filename}_${new Date().getTime()}.png`;
+      link.href = url;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function downloadChartCSV(chartId, filename) {
+      let chart = chartInstances[chartId];
+      if (!chart) return;
+
+      let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+      let headers = ['Parameter / Sumbu'];
+      chart.data.datasets.forEach(ds => { headers.push(`"${ds.label || 'Nilai'}"`); });
+      csvContent += headers.join(",") + "\n";
+
+      chart.data.labels.forEach((lbl, idx) => {
+        let row = [`"${lbl}"`];
+        chart.data.datasets.forEach(ds => {
+          row.push(`"${ds.data[idx] !== undefined ? ds.data[idx] : ''}"`);
+        });
+        csvContent += row.join(",") + "\n";
+      });
+
+      let encodedUri = encodeURI(csvContent);
+      let link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `${filename}_${new Date().getTime()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function downloadChartPDF(chartId, reportTitle) {
+      let chart = chartInstances[chartId];
+      if (!chart) return;
+
+      showL("Mempersiapkan Dokumen Cetak...");
+
+      let imgData = chart.toBase64Image('image/png', 1.0);
+      let idKls = document.getElementById('dash_kelas').value;
+      let kelasObj = (DB.MasterKelas || []).find(k => String(k.id_kelas) === String(idKls));
+      let namaKelas = kelasObj ? kelasObj.nama_kelas : "Seluruh Kelas";
+
+      let idPer = document.getElementById('dash_periode').value;
+      let perObj = (DB.MasterPeriode || []).find(p => String(p.id_periode) === String(idPer));
+      let namaPeriode = perObj ? `${perObj.tahun_ajaran} (${perObj.semester})` : "-";
+
+      let sek = (DB.PengaturanSekolah && DB.PengaturanSekolah.length > 0) ? DB.PengaturanSekolah[0] : {
+        nama_sekolah: "SEKOLAH ANAK PAPUA",
+        alamat_sekolah: "Jalan Tiwa, Wonorejo",
+        npsn: "69999999",
+        kota: "Nabire",
+        nama_kepsek: "Dosma Aritonang, S.Pd",
+        nip_kepsek: "-"
+      };
+
+      let today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
+      let tableRows = '';
+      chart.data.labels.forEach((lbl, idx) => {
+        let val1 = chart.data.datasets[0] ? chart.data.datasets[0].data[idx] : '-';
+        let val2 = chart.data.datasets[1] ? chart.data.datasets[1].data[idx] : null;
+        let keterangan = 'Normal';
+        if (parseFloat(val1) < 75) keterangan = 'Perlu Bimbingan Tambahan';
+        else if (parseFloat(val1) >= 85) keterangan = 'Sangat Memuaskan';
+
+        tableRows += `
+          <tr>
+            <td align="center">${idx + 1}</td>
+            <td><b>${lbl}</b></td>
+            <td align="center">${val1} ${val2 !== null ? `(Target: ${val2})` : ''}</td>
+            <td align="center">${keterangan}</td>
+          </tr>
+        `;
+      });
+
+      let printWin = window.open('', '', 'width=1100,height=850');
+      let html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Laporan Analitik - ${reportTitle}</title>
+          <style>
+            @page { size: landscape; margin: 12mm; }
+            body { font-family: 'Times New Roman', Times, serif; color: #000; font-size: 11px; margin: 0; padding: 0; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            th, td { border: 1px solid #000; padding: 5px 6px; vertical-align: middle; }
+            th { background-color: #f2f2f2; text-align: center; font-weight: bold; }
+            .kop-container { border: none !important; padding: 0 0 10px 0; }
+            .kop-surat { text-align: center; border-bottom: 2.5px solid #000; padding-bottom: 8px; margin-bottom: 8px; }
+            .kop-surat h3 { margin: 0; font-size: 18px; text-transform: uppercase; letter-spacing: 0.5px; }
+            .kop-surat h4 { margin: 4px 0 0 0; font-size: 13px; text-transform: uppercase; font-weight: bold; }
+            .kop-surat p { margin: 3px 0 0 0; font-size: 11px; font-weight: normal; }
+            .chart-img-container { text-align: center; margin: 15px 0; border: 1px solid #ccc; padding: 10px; background: #fafafa; border-radius: 4px; }
+            .chart-img { max-height: 280px; max-width: 90%; height: auto; display: block; margin: 0 auto; }
+            .ttd-table { width: 100%; border: none; margin-top: 25px; }
+            .ttd-table td { border: none; text-align: center; font-size: 11px; }
+            thead { display: table-header-group; }
+            tfoot { display: table-footer-group; }
+            tr { page-break-inside: avoid; }
+          </style>
+        </head>
+        <body>
+          <table>
+            <thead>
+              <tr>
+                <th colspan="4" class="kop-container">
+                  <div class="kop-surat">
+                    <h3>${sek.nama_sekolah}</h3>
+                    <p>${sek.alamat_sekolah} &bull; NPSN: ${sek.npsn || '-'}</p>
+                    <h4>LEMBAR DOKUMEN ANALITIK GRAFIK: ${reportTitle.toUpperCase()}</h4>
+                    <p><b>Konteks Kelas:</b> ${namaKelas} &nbsp;|&nbsp; <b>Periode Akademik:</b> ${namaPeriode} &nbsp;|&nbsp; <b>Tanggal Cetak:</b> ${today}</p>
+                  </div>
+                  <div class="chart-img-container">
+                    <img src="${imgData}" class="chart-img" alt="${reportTitle}">
+                  </div>
+                </th>
+              </tr>
+              <tr>
+                <th width="6%">No</th>
+                <th width="44%">Indikator / Parameter Analisis</th>
+                <th width="25%">Capaian / Skor Kuantitatif</th>
+                <th width="25%">Evaluasi & Rekomendasi</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tableRows}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="4" style="border:none; padding-top: 20px;">
+                  <table class="ttd-table">
+                    <tr>
+                      <td width="50%">
+                        Mengetahui,<br>Kepala Sekolah<br><br><br><br><br>
+                        <u><b>${sek.nama_kepsek}</b></u><br>
+                        NIY. ${sek.nip_kepsek}
+                      </td>
+                      <td width="50%">
+                        ${sek.kota || 'Nabire'}, ${today}<br>Guru Pamong / Petugas Analitik<br><br><br><br><br>
+                        <u><b>${cUser.name || 'Guru Pengampu'}</b></u><br>
+                        NIY. -
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          <\/script>
+        </body>
+        </html>
+      `;
+
+      printWin.document.open();
+      printWin.document.write(html);
+      printWin.document.close();
+      hideL();
+    }
+
+    // Listener Pencarian EWS
+    function handleEwsSearch(val) {
+    searchEwsQuery = (val || '').toLowerCase();
+    currentEwsPage = 1;
+    renderFilteredEwsTable();
+    }
+
+    // Listener Pengurutan Kolom Header EWS
+    function sortEwsTable(col) {
+    if (sortColEws === col) {
+    sortAscEws = !sortAscEws;
+    } else {
+    sortColEws = col;
+    sortAscEws = (col === 'siswa' || col === 'no'); // Default alfabetik ASC, risiko DESC
+    }
+    renderFilteredEwsTable();
+    }
+
+    // Listener Paginasi EWS
+    function changeEwsPage(delta) {
+    currentEwsPage += delta;
+    renderFilteredEwsTable();
+    }
+
+    // Fungsi Pengambil Data Tersaring EWS (Digunakan oleh Render, Zoom, & Ekspor)
+    function getFilteredEwsData() {
+    let data = globalEwsRecords.slice();
+
+    // 1. Filter Kategori Tab
+    if (activeEwsFilter !== 'ALL') {
+    data = data.filter(r => r.kategoriList.includes(activeEwsFilter));
+    }
+
+    // 2. Filter Pencarian Teks
+    if (searchEwsQuery) {
+    data = data.filter(r => {
+    let nm = (r.nama_siswa || '').toLowerCase();
+    let nisn = String(r.id_siswa || '').toLowerCase();
+    let kat = r.kategoriList.join(' ').toLowerCase();
+    let iss = r.issues.map(x => x.deskripsi).join(' ').toLowerCase();
+    return nm.includes(searchEwsQuery) || nisn.includes(searchEwsQuery) || kat.includes(searchEwsQuery) ||
+    iss.includes(searchEwsQuery);
+    });
+    }
+
+    // 3. Pengurutan (Sorting)
+    data.sort((a, b) => {
+    let valA = '', valB = '';
+    if (sortColEws === 'siswa') {
+    valA = (a.nama_siswa || '').toLowerCase();
+    valB = (b.nama_siswa || '').toLowerCase();
+    return sortAscEws ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    } else if (sortColEws === 'risiko') {
+    valA = a.riskScore || 0;
+    valB = b.riskScore || 0;
+    return sortAscEws ? (valA - valB) : (valB - valA);
+    } else if (sortColEws === 'kategori') {
+    valA = a.kategoriList.join(', ');
+    valB = b.kategoriList.join(', ');
+    return sortAscEws ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    }
+    return 0;
+    });
+
+    return data;
+    }
+
+    // Render Tabel EWS Berhalaman (Paginated)
+    function renderFilteredEwsTable() {
+    let tbody = document.getElementById('ewsTableBody');
+    let data = getFilteredEwsData();
+
+    if (data.length === 0) {
+    tbody.innerHTML = `
+    <tr>
+      <td colspan="6" class="text-center py-4 text-success fw-bold">
+        <i class="fa-solid fa-circle-check fa-2x mb-2 d-block"></i>
+        Tidak ada siswa terdeteksi dalam kriteria ini.
+      </td>
+    </tr>
+    `;
+    document.getElementById('pageIndicatorEws').innerText = 'Halaman 1 dari 1';
+    document.getElementById('btnPrevEws').disabled = true;
+    document.getElementById('btnNextEws').disabled = true;
+    return;
+    }
+
+    // Logika Paginasi
+    let totalData = data.length;
+    let totalPages = Math.ceil(totalData / pageSizeEws) || 1;
+    if (currentEwsPage > totalPages) currentEwsPage = totalPages;
+    if (currentEwsPage < 1) currentEwsPage=1; let start=(currentEwsPage - 1) * pageSizeEws; let pageData=data.slice(start,
+      start + pageSizeEws); let rows='' ; pageData.forEach((r, idx)=> {
+      let realIndex = start + idx + 1;
+      let listDesc = r.issues.map(iss => `<div class="mb-1">&bull;
+        <span class="badge bg-secondary" style="font-size:10px;">${iss.kategori}</span> ${iss.deskripsi}</div>`).join('');
+      let kategoriBadges = r.kategoriList.map(k =>
+      `<span class="badge bg-dark me-1" style="font-size:10px;">${k}</span>`).join('');
+
+      rows += `
+      <tr>
+        <td class="fw-bold">${realIndex}</td>
+        <td class="text-start">
+          <span class="fw-bold text-dark">${r.nama_siswa}</span>
+          <br><small class="text-muted">NISN: ${r.id_siswa}</small>
+        </td>
+        <td><span class="badge badge-pill-custom ${r.badgeClass}">${r.tingkatan}</span></td>
+        <td>${kategoriBadges}</td>
+        <td class="text-start" style="font-size: 12px;">${listDesc}</td>
+        <td>
+          <a href="${SCRIPT_URL}?page=profil&tipe=siswa&id=${r.id_siswa}" target="_top"
+            class="btn btn-sm btn-outline-danger fw-bold rounded-pill">
+            <i class="fa-solid fa-user-pen me-1"></i> Bimbing
+          </a>
+        </td>
+      </tr>
+      `;
+      });
+
+      tbody.innerHTML = rows;
+      document.getElementById('pageIndicatorEws').innerText = `Halaman ${currentEwsPage} dari ${totalPages} (Total:
+      ${totalData} Siswa)`;
+      document.getElementById('btnPrevEws').disabled = (currentEwsPage === 1);
+      document.getElementById('btnNextEws').disabled = (currentEwsPage === totalPages);
+      }
+  </script>
+</body>
+
+</html>

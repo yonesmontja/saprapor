@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profil Pengguna - EduRapor</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #f0f2f5;
+      font-family: sans-serif;
+    }
+
+    #loadingOverlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.95);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* Estetika Profil Ala Media Sosial */
+    .profile-cover {
+      height: 200px;
+      background: linear-gradient(135deg, #3f51b5, #00bcd4);
+      border-radius: 10px 10px 0 0;
+    }
+
+    .profile-avatar {
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      border: 5px solid white;
+      margin-top: -75px;
+      background-color: #e9ecef;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 50px;
+      color: #adb5bd;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-box {
+      text-align: center;
+      padding: 15px;
+      border-radius: 10px;
+      background: #f8f9fa;
+    }
+
+    .timeline-item {
+      border-left: 3px solid #3f51b5;
+      padding-left: 15px;
+      position: relative;
+      margin-bottom: 20px;
+    }
+
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: -9px;
+      top: 0;
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background: #3f51b5;
+      border: 3px solid white;
+    }
+
+    .nav-pills .nav-link {
+      color: #495057;
+      font-weight: 500;
+      border-radius: 30px;
+      padding: 8px 20px;
+      margin-right: 10px;
+    }
+
+    .nav-pills .nav-link.active {
+      background-color: #3f51b5;
+      color: white;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="loadingOverlay">
+    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div>
+    <h5 class="mt-3 text-muted" id="loadingText">Memuat Profil...</h5>
+  </div>
+
+  <script>
+    const SCRIPT_URL = "<?= scriptUrl ?>";
+  </script>
+  <?!= include('navbar'); ?>
+
+  <div class="container mt-4 mb-5">
+
+    <!-- HEADER PROFIL -->
+    <div class="card shadow-sm border-0 mb-4 rounded-4">
+      <div class="profile-cover"></div>
+      <div class="card-body px-5 pb-4 d-flex flex-column align-items-center flex-md-row justify-content-md-between">
+        <div class="d-flex flex-column align-items-center flex-md-row text-center text-md-start">
+          <div class="profile-avatar"><i class="fa-solid fa-user-graduate"></i></div>
+          <div class="ms-md-4 mt-3 mt-md-0 pt-md-3">
+            <h2 class="fw-bold mb-1" id="pr_nama">Memuat Nama...</h2>
+            <p class="text-muted mb-0 fs-5"><i class="fa-solid fa-id-badge"></i> ID: <span id="pr_id">-</span> |
+              <i class="fa-solid fa-users-viewfinder"></i> Kelas: <span id="pr_kelas">-</span></p>
+          </div>
+        </div>
+        <div class="mt-4 mt-md-0 pt-md-3 d-flex gap-3">
+          <div class="stat-box">
+            <h4 class="fw-bold text-success m-0" id="pr_kehadiran">0%</h4><small class="text-muted">Kehadiran</small>
+          </div>
+          <div class="stat-box">
+            <h4 class="fw-bold text-primary m-0" id="pr_rata_rata">0.0</h4>
+            <small class="text-muted">Rata-rata STNKM</small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <!-- SIDEBAR: BIODATA -->
+      <div class="col-md-4 mb-4">
+        <div class="card shadow-sm border-0 rounded-4 h-100">
+          <div class="card-body p-4">
+            <h5 class="fw-bold border-bottom pb-2 mb-3">Biodata Pribadi</h5>
+            <ul class="list-group list-group-flush">
+              <li class="list-group-item px-0 d-flex justify-content-between">
+                <span class="text-muted">Jenis Kelamin</span><span class="fw-bold" id="bio_jk">-</span>
+              </li>
+              <li class="list-group-item px-0 d-flex justify-content-between">
+                <span class="text-muted">Tempat Lahir</span><span class="fw-bold" id="bio_tempat">-</span>
+              </li>
+              <li class="list-group-item px-0 d-flex justify-content-between">
+                <span class="text-muted">Tanggal Lahir</span><span class="fw-bold" id="bio_tgl">-</span>
+              </li>
+              <li class="list-group-item px-0 d-flex justify-content-between">
+                <span class="text-muted">Suku / Asal</span><span class="fw-bold" id="bio_suku">-</span>
+              </li>
+              <li class="list-group-item px-0 mt-3 border-0">
+                <button class="btn btn-outline-primary w-100" onclick="window.history.back()"><i class="fa-solid fa-arrow-left"></i> Kembali Sebelumnya</button>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- MAIN AREA: TAB KONTEN -->
+      <div class="col-md-8">
+        <div class="card shadow-sm border-0 rounded-4">
+          <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
+            <ul class="nav nav-pills mb-3" id="pills-tab" role="tablist">
+              <li class="nav-item">
+                <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#pills-radar"><i class="fa-solid fa-spider"></i> Peta Kompetensi</button>
+              </li>
+              <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="pill" data-bs-target="#pills-feed"><i class="fa-solid fa-list-check"></i> Riwayat Aktivitas</button>
+              </li>
+            </ul>
+          </div>
+          <div class="card-body p-4 pt-2">
+            <div class="tab-content" id="pills-tabContent">
+
+              <!-- TAB 1: RADAR CHART (Peta Kompetensi STNKM) -->
+              <div class="tab-pane fade show active" id="pills-radar">
+                <div class="row align-items-center">
+                  <div class="col-md-7 text-center">
+                    <!-- Wadah Canvas Chart.js Baru -->
+                    <canvas id="stnkmRadarChart" style="max-height: 350px;"></canvas>
+                  </div>
+                  <div class="col-md-5">
+                    <div class="alert alert-secondary border-0 shadow-sm mb-3">
+                      <h6 class="fw-bold"><i class="fa-solid fa-fingerprint me-2"></i> DNA Kompetensi Siswa</h6>
+                      <p class="small mb-2">Grafik dipetakan dari matriks 5 Dimensi:</p>
+                      <ul class="small mb-0 text-muted">
+                        <li><b>S:</b> Skill / Keterampilan Teknis</li>
+                        <li><b>T:</b> Teori / Pemahaman</li>
+                        <li><b>N:</b> Nalar / Logika Kritis</li>
+                        <li><b>K:</b> Karakter / Sikap & Etika</li>
+                        <li><b>M:</b> Minat / Antusiasme</li>
+                      </ul>
+                    </div>
+                    <div id="radarInsights">
+                      <!-- Insight otomatis disuntikkan oleh JS -->
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- TAB 2: FEED RIWAYAT -->
+              <div class="tab-pane fade" id="pills-feed">
+                <h5 class="fw-bold mb-4">Aktivitas Akademik Terakhir</h5>
+                <div id="timelineContainer" style="max-height: 400px; overflow-y: auto; padding-right: 10px;">
+                  <!-- Daftar riwayat disuntikkan oleh JS -->
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <script>
+    // 1. SISTEM ANTI MACET & PROTEKSI SESI
+    let failsafeTimer = setTimeout(() => {
+      let overlay = document.getElementById('loadingOverlay');
+      if (overlay) overlay.style.display = 'none';
+      if(!activeId) document.getElementById('pr_nama').innerText = "Data Siswa Tidak Ditemukan.";
+    }, 5000);
+
+    let cUser = null;
+    let DB = {};
+    let activeId = "";
+    let activeType = "siswa";
+    let idKelasSiswa = "";
+    let idPeriodeAktifGlobal = "";
+
+    try {
+      cUser = JSON.parse(sessionStorage.getItem('eduUser'));
+      if (!cUser || !cUser.name) {
+        window.top.location.href = SCRIPT_URL + "?page=login";
+      } else {
+        jalankanProfil(); // Booting utama
+      }
+    } catch (fatalError) {
+      document.getElementById('loadingOverlay').style.display = 'none';
+      Swal.fire('Error Sesi', 'Sesi tidak valid. Harap login ulang.', 'error');
+    }
+
+    function jalankanProfil() {
+      // 2. Menangkap Parameter dari URL
+      google.script.url.getLocation(function(location) {
+        if(location && location.parameter) {
+          activeId = location.parameter.id || "";
+          activeType = location.parameter.tipe || "siswa";
+        }
+        if(cUser && cUser.role === 'siswa') activeId = cUser.id_siswa; 
+        loadMasterData();
+      });
+    }
+
+    // 3. TAHAP AWAL: Mengunduh Referensi Dasar & Cari Kelas Siswa
+    function loadMasterData() {
+      google.script.run
+        .withSuccessHandler(res => { 
+          clearTimeout(failsafeTimer);
+          DB = res || {}; 
+          
+          let periodeAktifObj = (DB.MasterPeriode || []).find(p => p.status_aktif === 'AKTIF');
+          idPeriodeAktifGlobal = periodeAktifObj ? periodeAktifObj.id_periode : "";
+
+          // Cari kelas siswa untuk menarik riwayat spesifik
+          if (activeId) {
+             let siswa = DB.MasterSiswa?.find(s => String(s.id_siswa) === String(activeId));
+             if(siswa) idKelasSiswa = siswa.id_kelas;
+          }
+
+          if (idKelasSiswa && idPeriodeAktifGlobal) {
+             fetchRiwayatAkademik(); // Tarik transaksi
+          } else {
+             renderProfilSiswa(); // Hanya render biodata tanpa riwayat
+          }
+        })
+        .withFailureHandler(err => { 
+          clearTimeout(failsafeTimer);
+          document.getElementById('loadingOverlay').style.display = 'none'; 
+          alert("Gagal memuat: " + err.message); 
+        })
+        .getMasterReferences();
+    }
+
+    // 4. TAHAP DINAMIS: Mengunduh Nilai & Presensi (On-Demand Fetching)
+    function fetchRiwayatAkademik() {
+      google.script.run
+        .withSuccessHandler(res => {
+           DB.TransNilai = res.TransNilai || [];
+           DB.TransPresensi = res.TransPresensi || [];
+           document.getElementById('loadingOverlay').style.display = 'none'; 
+           renderProfilSiswa();
+        })
+        .withFailureHandler(err => {
+           document.getElementById('loadingOverlay').style.display = 'none'; 
+           renderProfilSiswa(); // Render seadanya jika transaksi gagal
+        })
+        .getTransactionalDataByContext(idKelasSiswa, idPeriodeAktifGlobal, false);
+    }
+
+    // 5. Render Semua Modul Profil
+    function renderProfilSiswa() {
+      if(!activeId) return;
+      document.getElementById('loadingOverlay').style.display = 'none'; 
+      
+      let siswa = DB.MasterSiswa?.find(s => String(s.id_siswa) === String(activeId));
+      if(!siswa) {
+         document.getElementById('pr_nama').innerText = "Data tidak ditemukan.";
+         return;
+      }
+
+      let kelas = DB.MasterKelas?.find(k => k.id_kelas == siswa.id_kelas)?.nama_kelas || "-";
+
+      document.getElementById('pr_nama').innerText = siswa.nama_siswa;
+      document.getElementById('pr_id').innerText = siswa.id_siswa;
+      document.getElementById('pr_kelas').innerText = kelas;
+      document.getElementById('bio_jk').innerText = siswa.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan';
+      document.getElementById('bio_tempat').innerText = siswa.tempat_lahir || '-';
+      document.getElementById('bio_suku').innerText = siswa.suku || '-';
+      
+      let tgl = siswa.tgl_lahir;
+      if (tgl) {
+        if (typeof tgl === 'object' && tgl instanceof Date) tgl = tgl.toISOString().split('T')[0];
+        else if (typeof tgl === 'string' && tgl.includes('T')) tgl = tgl.split('T')[0];
+      }
+      document.getElementById('bio_tgl').innerText = tgl || '-';
+
+      // Menggunakan data Transaksional yang sudah ditarik secara spesifik
+      let nSiswa = (DB.TransNilai || []).filter(n => String(n.id_siswa) === String(activeId));
+      let pSiswa = (DB.TransPresensi || []).filter(p => String(p.id_siswa) === String(activeId));
+
+      let rata2 = 0;
+      if (nSiswa.length > 0) {
+        let akumulasiSTNKM = 0;
+        nSiswa.forEach(n => {
+          let totalPerTransaksi = parseFloat(n.poin_S || 0) + parseFloat(n.poin_T || 0) + 
+                                  parseFloat(n.poin_N || 0) + parseFloat(n.poin_K || 0) + 
+                                  parseFloat(n.poin_M || 0);
+          akumulasiSTNKM += (totalPerTransaksi / 5);
+        });
+        rata2 = (akumulasiSTNKM / nSiswa.length).toFixed(1);
+      }
+      document.getElementById('pr_rata_rata').innerText = rata2;
+
+      let persentaseHadir = 0;
+      if(pSiswa.length > 0) {
+        let hadir = pSiswa.filter(p => p.status_kehadiran === 'Hadir').length;
+        persentaseHadir = Math.round((hadir / pSiswa.length) * 100);
+      }
+      document.getElementById('pr_kehadiran').innerText = persentaseHadir + "%";
+
+      renderTimeline(nSiswa, pSiswa);
+      renderSTNKMRadar(nSiswa);
+    }
+    
+    // --- FUNGSI RENDER GRAFIK RADAR STNKM ---
+    function renderSTNKMRadar(riwayat) {
+      let totalS = 0, totalT = 0, totalN = 0, totalK = 0, totalM = 0;
+      let count = riwayat.length;
+      let insightBox = document.getElementById('radarInsights');
+
+      if (count === 0) {
+        let canvas = document.getElementById('stnkmRadarChart');
+        let ctx = canvas.getContext('2d');
+        ctx.font = "14px Arial";
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#6c757d";
+        ctx.fillText("Belum ada riwayat untuk dianalisis.", canvas.width/2, canvas.height/2);
+        if (insightBox) insightBox.innerHTML = '<p class="text-muted small">Data belum cukup untuk menghasilkan insight.</p>';
+        return;
+      }
+
+      riwayat.forEach(r => {
+        totalS += parseFloat(r.poin_S || 0);
+        totalT += parseFloat(r.poin_T || 0);
+        totalN += parseFloat(r.poin_N || 0);
+        totalK += parseFloat(r.poin_K || 0);
+        totalM += parseFloat(r.poin_M || 0);
+      });
+
+      let avgS = (totalS / count).toFixed(1);
+      let avgT = (totalT / count).toFixed(1);
+      let avgN = (totalN / count).toFixed(1);
+      let avgK = (totalK / count).toFixed(1);
+      let avgM = (totalM / count).toFixed(1);
+
+      let dimensions = [
+        { nama: 'Skill (S)', nilai: Number(avgS) },
+        { nama: 'Teori (T)', nilai: Number(avgT) },
+        { nama: 'Nalar (N)', nilai: Number(avgN) },
+        { nama: 'Karakter (K)', nilai: Number(avgK) },
+        { nama: 'Minat (M)', nilai: Number(avgM) }
+      ];
+
+      dimensions.sort((a, b) => b.nilai - a.nilai);
+      let insightTerbaik = dimensions[0]; 
+
+      if (insightBox) {
+        if (insightTerbaik.nilai > 0) {
+          insightBox.innerHTML = `
+            <div class="alert alert-info border-0 shadow-sm py-2 px-3 m-0">
+              <i class="fa-solid fa-award text-primary me-2"></i>Kekuatan dominan siswa ini ada pada aspek <strong>${insightTerbaik.nama}</strong> (Rata-rata: ${insightTerbaik.nilai} Poin).
+            </div>`;
+        } else {
+          insightBox.innerHTML = '';
+        }
+      }
+
+      const ctx = document.getElementById('stnkmRadarChart').getContext('2d');
+      
+      if (window.myRadarChart) window.myRadarChart.destroy();
+
+      window.myRadarChart = new Chart(ctx, {
+        type: 'radar',
+        data: {
+          labels: ['Skill (S)', 'Teori (T)', 'Nalar (N)', 'Karakter (K)', 'Minat (M)'],
+          datasets: [{
+            label: 'Profil Kompetensi',
+            data: [avgS, avgT, avgN, avgK, avgM],
+            backgroundColor: 'rgba(14, 165, 233, 0.2)', 
+            borderColor: 'rgba(14, 165, 233, 1)',
+            pointBackgroundColor: 'rgba(245, 158, 11, 1)', 
+            pointBorderColor: '#fff',
+            pointHoverBackgroundColor: '#fff',
+            pointHoverBorderColor: 'rgba(245, 158, 11, 1)',
+            borderWidth: 2,
+            fill: true
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            r: {
+              angleLines: { color: 'rgba(0, 0, 0, 0.1)' },
+              grid: { color: 'rgba(0, 0, 0, 0.1)' },
+              pointLabels: { font: { size: 12, weight: 'bold', family: 'sans-serif' }, color: '#333' },
+              suggestedMin: 0,
+              suggestedMax: 100 
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: 'rgba(0,0,0,0.8)',
+              callbacks: { label: function(context) { return ' ' + context.label + ': ' + context.raw + ' Poin'; } }
+            }
+          }
+        }
+      });
+    }
+
+    function renderTimeline(nSiswa, pSiswa) {
+      let riwayat = [];
+      nSiswa.forEach(n => riwayat.push({ type: 'nilai', date: new Date(n.tanggal || 0), data: n }));
+      pSiswa.forEach(p => riwayat.push({ type: 'presensi', date: new Date(p.tanggal || 0), data: p }));
+      
+      riwayat.sort((a,b) => b.date - a.date);
+
+      let tlHtml = "";
+      riwayat.slice(0, 15).forEach(item => { 
+        let d = item.data;
+        let tglStr = item.date.toLocaleDateString('id-ID', {day:'numeric', month:'short', year:'numeric'});
+        
+        if(item.type === 'nilai') {
+          let mapel = DB.MasterMapel?.find(m => m.id_mapel == d.id_mapel)?.nama_mapel || d.id_mapel;
+          let materi = DB.MasterMateri?.find(mt => mt.id_materi == d.id_materi)?.nama_materi || d.id_materi || 'Materi Umum';
+          tlHtml += `<div class="timeline-item">
+            <small class="text-muted">${tglStr}</small>
+            <h6 class="fw-bold mb-1 mt-1 text-primary">Mendapat Nilai <span class="badge bg-primary">${d.nilai}</span> di ${mapel}</h6>
+            <p class="mb-0 small text-muted">Kompetensi: ${materi}</p>
+          </div>`;
+        } else {
+          let badge = d.status_kehadiran === 'Hadir' ? 'bg-success' : d.status_kehadiran === 'Sakit' ? 'bg-warning text-dark' : d.status_kehadiran === 'Izin' ? 'bg-info text-dark' : 'bg-danger';
+          tlHtml += `<div class="timeline-item border-start-0 border-secondary" style="border-left: 3px solid #6c757d;">
+            <small class="text-muted">${tglStr}</small>
+            <h6 class="fw-bold mb-1 mt-1 text-secondary">Tercatat <span class="badge ${badge}">${d.status_kehadiran}</span> di Kelas</h6>
+          </div>`;
+        }
+      });
+      
+      document.getElementById('timelineContainer').innerHTML = tlHtml || '<p class="text-muted">Belum ada aktivitas.</p>';
+    }
+
+  </script>
+</body>
+
+</html>

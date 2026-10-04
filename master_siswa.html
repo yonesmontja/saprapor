@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Grand Master Siswa - EduRapor</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #f4f6f9; font-family: sans-serif; }
+    #loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.95); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+    .table-master th { background-color: #3f51b5; color: white; text-align: center; }
+    .nav-tabs .nav-link.active { font-weight: bold; color: #3f51b5; border-bottom: 3px solid #3f51b5; }
+    .nav-tabs .nav-link { color: #6c757d; border: none; }
+  </style>
+</head>
+<body>
+
+  <div id="loadingOverlay">
+    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div>
+    <h5 class="mt-3 text-muted" id="loadingText">Sinkronisasi Pangkalan Data Relasional...</h5>
+  </div>
+
+  <script>const SCRIPT_URL = "<?= scriptUrl ?>";</script>
+  <?!= include('navbar'); ?>
+
+  <div class="container-fluid px-4 mt-4 mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h3 class="text-primary fw-bold"><i class="fa-solid fa-users-gear me-2"></i>Grand Master Data Siswa</h3>
+      <button class="btn btn-primary fw-bold shadow-sm" onclick="bukaModal()"><i class="fa-solid fa-user-plus me-2"></i>Tambah Siswa Baru</button>
+    </div>
+
+    <div class="card border-0 shadow-sm p-4">
+      <div class="row mb-3">
+        <div class="col-md-3">
+          <select class="form-select border-primary fw-bold" id="filter_kelas" onchange="renderTabelSiswa()">
+            <option value="ALL">-- Semua Kelas --</option>
+          </select>
+        </div>
+        <div class="col-md-9">
+          <input type="text" class="form-control" id="search_siswa" placeholder="Cari nama atau NISN siswa..." onkeyup="renderTabelSiswa()">
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover table-master align-middle">
+          <thead>
+            <tr>
+              <th width="5%">No</th>
+              <th width="15%">NISN / ID</th>
+              <th width="25%">Nama Lengkap</th>
+              <th width="10%">Kelas</th>
+              <th width="5%">L/P</th>
+              <th width="15%">Agama & Suku</th>
+              <th width="15%">Status Tinggal</th>
+              <th width="10%">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="tabelSiswaBody">
+            <tr><td colspan="8" class="text-center text-muted">Memuat data...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL TAB FORM SISWA -->
+  <div class="modal fade" id="modalSiswa" data-bs-backdrop="static" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title fw-bold" id="modalTitle"><i class="fa-solid fa-user-pen me-2"></i>Formulir Peserta Didik</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        
+        <form id="formSiswa" onsubmit="simpanSiswa(event)">
+          <div class="modal-body p-0 bg-light">
+            
+            <ul class="nav nav-tabs px-3 pt-3 bg-white border-bottom-0" id="siswaTabs" role="tablist">
+              <li class="nav-item"><button class="nav-link active" id="tab-id-btn" data-bs-toggle="tab" data-bs-target="#tab-id" type="button"><i class="fa-solid fa-id-card me-2"></i>Identitas Utama</button></li>
+              <li class="nav-item"><button class="nav-link" id="tab-domisili-btn" data-bs-toggle="tab" data-bs-target="#tab-domisili" type="button"><i class="fa-solid fa-map-location-dot me-2"></i>Domisili & Riwayat</button></li>
+              <li class="nav-item"><button class="nav-link" id="tab-keluarga-btn" data-bs-toggle="tab" data-bs-target="#tab-keluarga" type="button"><i class="fa-solid fa-people-roof me-2"></i>Relasi Keluarga</button></li>
+            </ul>
+
+            <div class="tab-content p-4" id="siswaTabsContent">
+              <!-- TAB 1: IDENTITAS UTAMA -->
+              <div class="tab-pane fade show active" id="tab-id">
+                <input type="hidden" id="f_id_siswa">
+                <div class="row g-3">
+                  <div class="col-md-4">
+                    <label class="form-label fw-bold text-muted small">NISN <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="f_nisn" required>
+                  </div>
+                  <div class="col-md-5">
+                    <label class="form-label fw-bold text-muted small">Nama Lengkap <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="f_nama" required>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label fw-bold text-muted small">Nama Panggilan</label>
+                    <input type="text" class="form-control" id="f_panggilan">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label fw-bold text-muted small">Rombongan Belajar (Kelas) <span class="text-danger">*</span></label>
+                    <select class="form-select" id="f_kelas" required></select>
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label fw-bold text-muted small">Jenis Kelamin</label>
+                    <select class="form-select" id="f_jk" required>
+                      <option value="L">Laki-Laki</option><option value="P">Perempuan</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label fw-bold text-muted small">Tempat Lahir</label>
+                    <select class="form-select border-secondary" id="f_tempat_lahir"></select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label fw-bold text-muted small">Tanggal Lahir</label>
+                    <input type="date" class="form-control" id="f_tgl_lahir">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label fw-bold text-muted small">Agama</label>
+                    <select class="form-select" id="f_agama"></select>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label fw-bold text-muted small">Suku Bangsa</label>
+                    <select class="form-select" id="f_suku"></select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- TAB 2: DOMISILI & RIWAYAT -->
+              <div class="tab-pane fade" id="tab-domisili">
+                <div class="row g-3">
+                  <div class="col-md-12">
+                    <label class="form-label fw-bold text-muted small">Sekolah Asal (Pendidikan Sebelumnya)</label>
+                    <select class="form-select" id="f_sekolah_asal"></select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label fw-bold text-muted small">Status Tempat Tinggal</label>
+                    <select class="form-select" id="f_status_tinggal" onchange="cekStatusTinggal()">
+                      <option value="Bersama Orang Tua">Bersama Orang Tua</option>
+                      <option value="Bersama Wali">Bersama Wali</option>
+                      <option value="Asrama / Kost">Asrama / Kost</option>
+                      <option value="Mandiri">Mandiri</option>
+                    </select>
+                  </div>
+                  <div class="col-md-8">
+                    <label class="form-label fw-bold text-muted small">Alamat Jalan (Isi jika tidak tinggal bersama Ortu/Wali)</label>
+                    <input type="text" class="form-control" id="f_jalan" placeholder="Nama jalan, RT/RW, Dusun...">
+                  </div>
+                  <div class="col-md-12">
+                    <label class="form-label fw-bold text-muted small">Wilayah Kependudukan (Desa/Kec/Kab)</label>
+                    <select class="form-select" id="f_wilayah"></select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- TAB 3: RELASI KELUARGA -->
+              <div class="tab-pane fade" id="tab-keluarga">
+                <div class="alert alert-warning border-warning small">
+                  <i class="fa-solid fa-link me-2"></i>Pilih data Orang Tua atau Wali dari Pangkalan Data Induk. Jika data belum ada, tambahkan terlebih dahulu di menu Master Entitas.
+                </div>
+                <div class="row g-4">
+                  <div class="col-md-6">
+                    <div class="card border-primary h-100">
+                      <div class="card-header bg-primary text-white fw-bold"><i class="fa-solid fa-user-group me-2"></i>Relasi Orang Tua Kandung</div>
+                      <div class="card-body">
+                        <label class="form-label fw-bold text-muted small">Pilih Entitas Orang Tua</label>
+                        <select class="form-select border-primary" id="f_ortu">
+                          <option value="">-- Tidak Terhubung --</option>
+                        </select>
+                        <div class="form-text">Mencakup data Ayah, Ibu, Pekerjaan, dan Alamat Keluarga.</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="card border-secondary h-100">
+                      <div class="card-header bg-secondary text-white fw-bold"><i class="fa-solid fa-user-shield me-2"></i>Relasi Wali Peserta Didik</div>
+                      <div class="card-body">
+                        <label class="form-label fw-bold text-muted small">Pilih Entitas Wali (Opsional)</label>
+                        <select class="form-select border-secondary" id="f_wali">
+                          <option value="">-- Tidak Terhubung --</option>
+                        </select>
+                        <div class="form-text">Hanya diisi jika anak tidak tinggal dengan orang tua kandung.</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+          <div class="modal-footer bg-white">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+            <button type="submit" class="btn btn-success fw-bold px-4"><i class="fa-solid fa-floppy-disk me-2"></i>Simpan Data Siswa</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <script>
+    // 1. SISTEM ANTI MACET & PROTEKSI SESI
+    let failsafeTimer = setTimeout(() => {
+      let overlay = document.getElementById('loadingOverlay');
+      if (overlay) overlay.style.display = 'none';
+    }, 5000);
+
+    try {
+      let cUser = JSON.parse(sessionStorage.getItem('eduUser'));
+      if (!cUser || !cUser.name) {
+        window.top.location.href = SCRIPT_URL + "?page=login";
+      } else {
+        if (cUser.role === 'siswa') window.top.location.href = SCRIPT_URL + "?page=dashboard";
+        loadData(); // Booting utama
+      }
+    } catch (fatalError) {
+      document.getElementById('loadingOverlay').style.display = 'none';
+      Swal.fire('Error Sesi', 'Sesi tidak valid. Harap login ulang.', 'error');
+    }
+
+    let DB = {};
+    let modalSiswa = null;
+
+    function showL(t="Memproses...") { document.getElementById('loadingText').innerText = t; document.getElementById('loadingOverlay').style.display = 'flex'; }
+    function hideL() { document.getElementById('loadingOverlay').style.display = 'none'; }
+
+    // 2. TAHAP AWAL: Mengunduh Referensi Kependudukan (On-Demand)
+    function loadData() {
+      showL("Sinkronisasi Pangkalan Data Relasional...");
+      google.script.run
+        .withSuccessHandler(res => { 
+            clearTimeout(failsafeTimer);
+            DB = res || {}; 
+            initUI(); 
+            hideL(); 
+        })
+        .withFailureHandler(err => { hideL(); Swal.fire('Error Database', err.message, 'error'); })
+        .getMasterReferences();
+    }
+
+    function initUI() {
+      let optKls = '<option value="ALL">-- Semua Kelas --</option>';
+      let optKlsForm = '<option value="">-- Pilih Kelas --</option>';
+      (DB.MasterKelas || []).forEach(k => {
+        optKls += `<option value="${k.id_kelas}">${k.nama_kelas}</option>`;
+        optKlsForm += `<option value="${k.id_kelas}">${k.nama_kelas}</option>`;
+      });
+      document.getElementById('filter_kelas').innerHTML = optKls;
+      document.getElementById('f_kelas').innerHTML = optKlsForm;
+
+      let optAgm = '<option value="">-- Pilih Agama --</option>';
+      (DB.MasterAgama || []).forEach(a => optAgm += `<option value="${a.id_agama}">${a.nama_agama}</option>`);
+      document.getElementById('f_agama').innerHTML = optAgm;
+
+      let optSku = '<option value="">-- Pilih Suku --</option>';
+      (DB.MasterSuku || []).forEach(s => optSku += `<option value="${s.id_suku}">${s.nama_suku}</option>`);
+      document.getElementById('f_suku').innerHTML = optSku;
+
+      let optSek = '<option value="">-- Tidak Diketahui / Baru --</option>';
+      (DB.MasterSekolahAsal || []).forEach(sa => optSek += `<option value="${sa.id_sekolah_asal}">[${sa.jenjang_sekolah}] ${sa.nama_sekolah}</option>`);
+      document.getElementById('f_sekolah_asal').innerHTML = optSek;
+
+      let optWil = '<option value="">-- Pilih Wilayah Tinggal --</option>';
+      (DB.MasterWilayah || []).forEach(w => optWil += `<option value="${w.id_wilayah}">${w.kelurahan_desa}, Kec. ${w.kecamatan}, Kab. ${w.kabupaten_kota}</option>`);
+      document.getElementById('f_wilayah').innerHTML = optWil;
+      
+      let optTmpLahir = '<option value="">-- Pilih Tempat Lahir --</option>';
+      let kotaUnik = [...new Set((DB.MasterWilayah || []).map(w => w.kabupaten_kota))].filter(Boolean).sort();
+      kotaUnik.forEach(kota => {
+        optTmpLahir += `<option value="${kota}">${kota}</option>`;
+      });
+      document.getElementById('f_tempat_lahir').innerHTML = optTmpLahir;
+
+      let optOrtu = '<option value="">-- Tidak Terhubung / Kosong --</option>';
+      (DB.MasterOrtu || []).forEach(o => optOrtu += `<option value="${o.id_ortu}">Ayah: ${o.nama_ayah} & Ibu: ${o.nama_ibu}</option>`);
+      document.getElementById('f_ortu').innerHTML = optOrtu;
+
+      let optWali = '<option value="">-- Tidak Terhubung / Kosong --</option>';
+      (DB.MasterWali || []).forEach(w => optWali += `<option value="${w.id_wali}">Wali: ${w.nama_wali}</option>`);
+      document.getElementById('f_wali').innerHTML = optWali;
+
+      renderTabelSiswa();
+      modalSiswa = new bootstrap.Modal(document.getElementById('modalSiswa'));
+    }
+
+    function renderTabelSiswa() {
+      let fKelas = document.getElementById('filter_kelas').value;
+      let fSearch = document.getElementById('search_siswa').value.toLowerCase();
+      let tbody = document.getElementById('tabelSiswaBody');
+      let html = "";
+      let no = 1;
+
+      let siswaList = DB.MasterSiswa || [];
+      siswaList.forEach(s => {
+        if (fKelas !== "ALL" && String(s.id_kelas) !== String(fKelas)) return;
+        
+        // KUNCI PERBAIKAN: Memaksa nilai menjadi String sebelum dikenakan .toLowerCase()
+        let nSiswa = String(s.nama_siswa || "").toLowerCase();
+        let nisn = String(s.nisn || s.id_siswa || "").toLowerCase();
+        
+        if (fSearch && !nSiswa.includes(fSearch) && !nisn.includes(fSearch)) return;
+
+        let kelasObj = (DB.MasterKelas || []).find(k => String(k.id_kelas) === String(s.id_kelas));
+        let agamaObj = (DB.MasterAgama || []).find(a => String(a.id_agama) === String(s.id_agama));
+        let sukuObj = (DB.MasterSuku || []).find(sk => String(sk.id_suku) === String(s.id_suku));
+
+        let nmAgama = agamaObj ? agamaObj.nama_agama : "-";
+        let nmSuku = sukuObj ? sukuObj.nama_suku : "-";
+        let nmKelas = kelasObj ? kelasObj.nama_kelas : "-";
+
+        html += `
+          <tr>
+            <td class="text-center">${no++}</td>
+            <td class="fw-bold text-primary">${s.nisn || s.id_siswa}</td>
+            <td class="fw-bold"><a href="#" onclick="window.top.location.href = SCRIPT_URL + '?page=profil&tipe=siswa&id=${s.id_siswa}'" class="text-decoration-none text-dark">${s.nama_siswa}</a> <br><small class="text-muted fw-normal">Panggilan: ${s.panggilan || '-'}</small></td>
+            <td class="text-center">${nmKelas}</td>
+            <td class="text-center">${s.jenis_kelamin || '-'}</td>
+            <td><span class="badge bg-info text-dark w-100 mb-1">${nmAgama}</span><br><span class="badge bg-secondary w-100">${nmSuku}</span></td>
+            <td class="small text-muted">${s.status_tempat_tinggal || '-'}</td>
+            <td class="text-center">
+              <button class="btn btn-sm btn-primary shadow-none" onclick="bukaModal('${s.id_siswa}')" title="Edit Profil Lengkap"><i class="fa-solid fa-pen-to-square"></i></button>
+              <button class="btn btn-sm btn-outline-danger shadow-none" onclick="hapusSiswa('${s.id_siswa}')" title="Hapus Siswa"><i class="fa-solid fa-trash-can"></i></button>
+            </td>
+          </tr>
+        `;
+      });
+
+      tbody.innerHTML = html || '<tr><td colspan="8" class="text-center text-muted py-4">Data siswa tidak ditemukan.</td></tr>';
+    }
+
+    function cekStatusTinggal() {
+      let status = document.getElementById('f_status_tinggal').value;
+      let jalanEl = document.getElementById('f_jalan');
+      let wilEl = document.getElementById('f_wilayah');
+      
+      if (status === "Bersama Orang Tua" || status === "Bersama Wali") {
+        jalanEl.disabled = true; wilEl.disabled = true;
+        jalanEl.value = ""; wilEl.value = "";
+      } else {
+        jalanEl.disabled = false; wilEl.disabled = false;
+      }
+    }
+
+    function bukaModal(id = null) {
+      document.getElementById('formSiswa').reset();
+      document.getElementById('f_id_siswa').value = "";
+      document.getElementById('tab-id-btn').click(); 
+
+      if (id) {
+        document.getElementById('modalTitle').innerHTML = '<i class="fa-solid fa-user-pen me-2"></i>Edit Data Peserta Didik';
+        let s = DB.MasterSiswa.find(x => String(x.id_siswa) === String(id));
+        if (s) {
+          document.getElementById('f_id_siswa').value = s.id_siswa;
+          document.getElementById('f_nisn').value = s.nisn || s.id_siswa;
+          document.getElementById('f_nama').value = s.nama_siswa;
+          document.getElementById('f_panggilan').value = s.panggilan || "";
+          document.getElementById('f_kelas').value = s.id_kelas;
+          document.getElementById('f_jk').value = s.jenis_kelamin;
+          document.getElementById('f_tempat_lahir').value = s.tempat_lahir;
+          document.getElementById('f_tgl_lahir').value = s.tgl_lahir ? s.tgl_lahir.split('T')[0] : "";
+          document.getElementById('f_agama').value = s.id_agama || "";
+          document.getElementById('f_suku').value = s.id_suku || "";
+          
+          document.getElementById('f_sekolah_asal').value = s.id_sekolah_asal || "";
+          document.getElementById('f_status_tinggal').value = s.status_tempat_tinggal || "Bersama Orang Tua";
+          document.getElementById('f_jalan').value = s.jalan_siswa || "";
+          document.getElementById('f_wilayah').value = s.id_wilayah_siswa || "";
+          
+          document.getElementById('f_ortu').value = s.id_ortu || "";
+          document.getElementById('f_wali').value = s.id_wali || "";
+        }
+      } else {
+        document.getElementById('modalTitle').innerHTML = '<i class="fa-solid fa-user-plus me-2"></i>Registrasi Siswa Baru';
+      }
+      cekStatusTinggal();
+      modalSiswa.show();
+    }
+
+    function simpanSiswa(e) {
+      e.preventDefault();
+      let record = {
+        id_siswa: document.getElementById('f_id_siswa').value || "SIS-" + new Date().getTime(),
+        nisn: document.getElementById('f_nisn').value,
+        nama_siswa: document.getElementById('f_nama').value,
+        panggilan: document.getElementById('f_panggilan').value,
+        id_kelas: document.getElementById('f_kelas').value,
+        jenis_kelamin: document.getElementById('f_jk').value,
+        tempat_lahir: document.getElementById('f_tempat_lahir').value,
+        tgl_lahir: document.getElementById('f_tgl_lahir').value,
+        id_suku: document.getElementById('f_suku').value,
+        id_agama: document.getElementById('f_agama').value,
+        id_sekolah_asal: document.getElementById('f_sekolah_asal').value,
+        status_tempat_tinggal: document.getElementById('f_status_tinggal').value,
+        jalan_siswa: document.getElementById('f_jalan').value,
+        id_wilayah_siswa: document.getElementById('f_wilayah').value,
+        id_ortu: document.getElementById('f_ortu').value,
+        id_wali: document.getElementById('f_wali').value
+      };
+
+      showL("Menyimpan Pangkalan Data...");
+      google.script.run
+        .withSuccessHandler(res => {
+          if (res.success) {
+            modalSiswa.hide();
+            Swal.fire({toast:true, position:'top-end', icon:'success', title:'Data Disimpan!', showConfirmButton:false, timer:2000});
+            loadData(); // Segarkan tabel dengan data terbaru
+          } else { hideL(); Swal.fire('Gagal', res.message, 'error'); }
+        })
+        .withFailureHandler(err => { hideL(); Swal.fire('Error', err.message, 'error'); })
+        .saveMasterData('MasterSiswa', record, 'id_siswa', document.getElementById('f_id_siswa').value);
+    }
+
+    function hapusSiswa(id) {
+      Swal.fire({ title: 'Hapus Permanen?', text: "Menghapus siswa dapat merusak relasi nilai akademik anak ini.", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Ya, Hapus' }).then((result) => {
+        if (result.isConfirmed) {
+          showL("Menghapus Data...");
+          google.script.run
+            .withSuccessHandler(() => { loadData(); })
+            .deleteMasterData('MasterSiswa', id, 'id_siswa');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

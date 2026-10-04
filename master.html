@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Data Master - EduRapor</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  
+  <style>
+    body {
+      background-color: #f4f6f9;
+      font-family: sans-serif;
+    }
+
+    #loadingOverlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(255, 255, 255, 0.9); z-index: 9999;
+      display: flex; flex-direction: column; justify-content: center; align-items: center;
+    }
+
+    .nav-tabs .nav-link.active { font-weight: bold; color: #3f51b5 !important; border-bottom: 3px solid #3f51b5; }
+    .nav-tabs .nav-link { color: #495057; font-weight: 500; border: none; }
+    .dropdown-item.active { background-color: #3f51b5 !important; color: white !important; font-weight: bold; }
+    
+    .sortable { cursor: pointer; user-select: none; transition: background-color 0.2s; white-space: nowrap; }
+    .sortable:hover { background-color: #e2e6ea !important; }
+    .stnkm-slider-box { background-color: #f8fafc; padding: 12px; border-radius: 8px; margin-bottom: 12px; }
+  </style>
+</head>
+
+<body>
+
+  <div id="loadingOverlay">
+    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div>
+    <h5 class="mt-3 text-muted" id="loadingText">Sinkronisasi Pangkalan Data...</h5>
+  </div>
+
+  <script> const SCRIPT_URL = "<?= scriptUrl ?>"; </script>
+  <?!= include('navbar'); ?>
+
+  <div class="container-fluid px-4 mt-4 mb-5 control-area">
+    <h3 class="mb-4 text-primary fw-bold"><i class="fa-solid fa-server me-2"></i>Pusat Data Master</h3>
+
+    <div class="card shadow-sm p-3 border-top border-primary border-4">
+
+      <!-- NAVIGASI BERSARANG (NESTED TABS) -->
+      <ul class="nav nav-tabs mb-4 align-items-center" id="masterTabs">
+
+        <!-- Kelompok 1: Institusi -->
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle active text-primary" data-bs-toggle="dropdown" href="#" role="button" aria-expanded="false"><i class="fa-solid fa-building-columns me-1"></i> Institusi</a>
+          <ul class="dropdown-menu shadow-sm border-0">
+            <li><a class="dropdown-item active bg-primary text-white" href="#" onclick="switchTab('PengaturanSekolah', this, event)">Pengaturan Sekolah</a></li>
+            <li><a class="dropdown-item" href="#" onclick="switchTab('MasterKelas', this, event)">Rombongan Belajar (Kelas)</a></li>
+            <li><a class="dropdown-item" href="#" onclick="switchTab('MasterPeriode', this, event)">Tahun Ajaran & Semester</a></li>
+            <li><a class="dropdown-item" href="#" onclick="switchTab('MasterGuru', this, event)">Tenaga Pendidik (Guru)</a></li>
+          </ul>
+        </li>
+
+        <!-- Kelompok 2: Kurikulum -->
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-expanded="false"><i class="fa-solid fa-book-open me-1"></i> Kurikulum</a>
+          <ul class="dropdown-menu shadow-sm border-0">
+            <li><a class="dropdown-item" href="#" onclick="switchTab('MasterMapel', this, event)">Mapel</a></li>
+            <li><a class="dropdown-item" href="#" onclick="switchTab('MasterMBK', this, event)">Aktivitas MBK</a></li>
+            <li><a class="dropdown-item" href="#" onclick="switchTab('MasterMateri', this, event)">Materi</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="#" onclick="switchTab('MasterProyek', this, event)">Proyek P5</a></li>
+            <li><a class="dropdown-item" href="#" onclick="switchTab('MasterTargetP5', this, event)">Target Penilaian P5</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="#" onclick="switchTab('MasterBankPengetahuan', this, event)">Bank Aset Pengetahuan</a></li>
+          </ul>
+        </li>
+
+        <!-- Kelompok 3: Referensi Kependudukan -->
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-expanded="false"><i class="fa-solid fa-earth-asia me-1"></i> Referensi Dasar</a>
+          <ul class="dropdown-menu shadow-sm border-0">
+            <li><a class="dropdown-item" href="#" onclick="switchTab('MasterAgama', this, event)">Data Agama</a></li>
+            <li><a class="dropdown-item" href="#" onclick="switchTab('MasterSuku', this, event)">Data Suku Bangsa</a></li>
+            <li><a class="dropdown-item" href="#" onclick="switchTab('MasterPekerjaan', this, event)">Kategori Pekerjaan</a></li>
+            <li><a class="dropdown-item" href="#" onclick="switchTab('MasterWilayah', this, event)">Data Wilayah / Domisili</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="#" onclick="switchTab('MasterSekolahAsal', this, event)">Sekolah Asal</a></li>
+          </ul>
+        </li>
+
+        <!-- Kelompok 4: Entitas Keluarga -->
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-expanded="false"><i class="fa-solid fa-people-roof me-1"></i> Keluarga</a>
+          <ul class="dropdown-menu shadow-sm border-0">
+            <li><a class="dropdown-item" href="#" onclick="switchTab('MasterOrtu', this, event)">Data Orang Tua Kandung</a></li>
+            <li><a class="dropdown-item" href="#" onclick="switchTab('MasterWali', this, event)">Data Wali Peserta Didik</a></li>
+          </ul>
+        </li>
+
+        <!-- Tombol Khusus Grand Master Siswa -->
+        <li class="nav-item ms-auto">
+          <button class="btn btn-primary fw-bold shadow-sm" onclick="window.top.location.href = SCRIPT_URL + '?page=master_siswa'"><i class="fa-solid fa-user-graduate me-2"></i>Grand Master Siswa</button>
+        </li>
+      </ul>
+
+      <!-- HEADER PENCARIAN & EKSPOR -->
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3 gap-3">
+        <div class="d-flex align-items-center gap-3">
+          <h5 id="tabTitle" class="m-0 text-primary fw-bold">Data Pengaturan Sekolah</h5>
+          <button class="btn btn-primary btn-sm fw-bold shadow-sm" onclick="openCrudModal()"><i class="fa-solid fa-plus me-1"></i> Tambah Data</button>
+        </div>
+
+        <div class="d-flex flex-column flex-md-row gap-2 align-items-md-center">
+          <div class="input-group input-group-sm" style="max-width: 300px;">
+            <span class="input-group-text bg-white text-primary border-primary"><i class="fa-solid fa-magnifying-glass"></i></span>
+            <input type="text" class="form-control border-primary" id="searchMasterInput" placeholder="Pencarian cepat..." oninput="handleMasterSearch(this.value)">
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-success text-nowrap fw-bold" onclick="exportMasterData('csv')"><i class="fa-solid fa-file-csv"></i> CSV</button>
+            <button class="btn btn-sm btn-outline-danger text-nowrap fw-bold" onclick="exportMasterData('pdf')"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TABEL DATA -->
+      <div class="table-responsive">
+        <table class="table table-hover table-bordered align-middle text-center" id="masterTable">
+          <thead class="table-light" id="masterThead"></thead>
+          <tbody id="masterTbody"></tbody>
+        </table>
+      </div>
+
+      <!-- Paginasi -->
+      <div class="d-flex justify-content-between align-items-center mt-3">
+        <button class="btn btn-sm btn-outline-primary" id="btnPrevMaster" onclick="changeMasterPage(-1)"><i class="fa-solid fa-chevron-left"></i> Sebelumnya</button>
+        <span id="pageIndicatorMaster" class="text-muted fw-bold">Halaman 1</span>
+        <button class="btn btn-sm btn-outline-primary" id="btnNextMaster" onclick="changeMasterPage(1)">Selanjutnya <i class="fa-solid fa-chevron-right"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AREA CETAK TERSEMBUNYI -->
+  <div id="printMasterContainer" class="d-none"></div>
+
+  <!-- MODAL CRUD DINAMIS -->
+  <div class="modal fade" id="crudModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content border-0 shadow">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title fw-bold" id="crudModalTitle">Formulir Data</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <form id="crudForm" onsubmit="handleCrudSubmit(event)">
+            <input type="hidden" id="crudOldId">
+            <div id="crudFormBody" class="row"></div>
+            <div class="text-end mt-4 pt-3 border-top">
+              <button type="submit" class="btn btn-primary fw-bold px-4"><i class="fa-solid fa-floppy-disk me-2"></i> Simpan</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <script>
+    let cUser = JSON.parse(sessionStorage.getItem('eduUser'));
+    if(!cUser) window.top.location.href = SCRIPT_URL + "?page=login";
+    if(cUser.role === 'siswa') window.top.location.href = SCRIPT_URL + "?page=dashboard"; 
+
+    const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 });
+
+    let DB = {}; 
+    let currentMasterTab = 'PengaturanSekolah'; 
+    let currentMasterPage = 1;
+    let searchMasterQuery = "";
+    
+    // Konfigurasi Sortir Server
+    let sortMasterCol = "";
+    let sortMasterAsc = true;
+    const rowsPerPage = 10;
+    
+    const SCHEMA = {
+      'PengaturanSekolah': { 
+          idF: 'id_pengaturan', 
+          fields: [ 
+            { n: 'id_pengaturan', l: 'Kode Pengaturan', t: 'text', req: true, hideOnTable: true }, 
+            { n: 'nama_sekolah', l: 'Nama Sekolah', t: 'text', req: true }, 
+            { n: 'alamat_sekolah', l: 'Alamat Lengkap', t: 'text' }, 
+            { n: 'kota', l: 'Kota/Kabupaten', t: 'text' }, 
+            { n: 'nama_kepsek', l: 'Nama Kepala Sekolah', t: 'text' }, 
+            { n: 'nip_kepsek', l: 'NIP Kepala Sekolah', t: 'text' }, 
+            { n: 'kkm_global', l: 'KKM Global Sekolah', t: 'number', req: true },
+            { n: 'npsn', l: 'NPSN', t: 'text'},
+            { n: 'api_key_gemini', l: 'Google Gemini API Key (Global)', t: 'text', hideOnTable: true },
+            { n: 'ai_model_name', l: 'AI Model', t: 'text', def: 'gemini-3.7-flash', hideOnTable: true }
+          ]
+      },
+      'MasterGuru': { idF: 'id_guru', fields: [ { n: 'id_guru', l: 'ID Guru', t: 'text', req: true, hideOnTable: true }, { n: 'nama_guru', l: 'Nama Lengkap', t: 'text', req: true }, { n: 'nip_nik', l: 'NIP/NIK', t: 'text' } ]},
+      'MasterMapel': { idF: 'id_mapel', fields: [ { n: 'id_mapel', l: 'Kode Mapel', t: 'text', req: true, hideOnTable: true }, { n: 'nama_mapel', l: 'Nama Mapel', t: 'text', req: true }, { n: 'kelompok', l: 'Kelompok', t: 'text' }, { n: 'id_guru', l: 'Guru Pengampu', t: 'select', src: 'MasterGuru', v: 'id_guru', txt: 'nama_guru', req: true } ]},
+      'MasterKelas': { idF: 'id_kelas', fields: [ { n: 'id_kelas', l: 'Kode Kelas', t: 'text', req: true, hideOnTable: true }, { n: 'nama_kelas', l: 'Nama Kelas', t: 'text', req: true }, { n: 'wali_kelas', l: 'Wali Kelas', t: 'select', src: 'MasterGuru', v: 'id_guru', txt: 'nama_guru' } ]},
+      'MasterPeriode': { idF: 'id_periode', fields: [ { n: 'id_periode', l: 'Kode Periode', t: 'text', req: true, hideOnTable: true }, { n: 'tahun_ajaran', l: 'Tahun Ajaran', t: 'text' }, { n: 'semester', l: 'Semester', t: 'select', opts: [{v:'Ganjil',t:'Ganjil'},{v:'Genap',t:'Genap'}] }, { n: 'status_aktif', l: 'Status', t: 'select', opts: [{v:'AKTIF',t:'AKTIF'},{v:'TUTUP',t:'TUTUP'}] } ]},
+      'MasterKategoriPenilaian': { idF: 'id_kategori', fields: [ { n: 'id_kategori', l: 'ID Kategori', t: 'text', req: true, hideOnTable: true }, { n: 'nama_kategori', l: 'STNKM', t: 'text', req: true }, { n: 'keterangan', l: 'Keterangan', t: 'text' } ]},
+      
+      'MasterMateri': { idF: 'id_materi', fields: [ 
+        { n: 'id_materi', l: 'ID Materi', t: 'text', req: true, hideOnTable: true }, 
+        { n: 'id_mapel', l: 'Mata Pelajaran', t: 'select', src: 'MasterMapel', v: 'id_mapel', txt: 'nama_mapel', req: true }, 
+        { n: 'id_kelas', l: 'Kelas Target', t: 'select', src: 'MasterKelas', v: 'id_kelas', txt: 'nama_kelas', req: true }, 
+        { n: 'id_periode', l: 'Periode', t: 'select', src: 'MasterPeriode', v: 'id_periode', txt: 'tahun_ajaran', req: true }, 
+        { n: 'id_kategori', l: 'Aspek STNKM', t: 'select', src: 'MasterKategoriPenilaian', v: 'id_kategori', txt: 'nama_kategori', req: true }, 
+        { n: 'nama_materi', l: 'Materi (Pilih dari Bank)', t: 'select', src: 'MasterBankPengetahuan', v: 'nama_topik', txt: 'nama_topik', req: true, onchange: 'autofillSTNKM(this.value)' }, 
+        { n: 'deskripsi_kompetensi', l: 'Deskripsi Kompetensi', t: 'text', req: true },
+        { n: 'stnkm_badge', l: 'Poin STNKM', t: 'virtual_stnkm' },
+        { n: 'mat_S', l: 'Skill (S)', t: 'slider', c: 'primary', def: 100, hideOnTable: true },
+        { n: 'mat_T', l: 'Teori (T)', t: 'slider', c: 'success', def: 100, hideOnTable: true },
+        { n: 'mat_N', l: 'Nalar (N)', t: 'slider', c: 'info', def: 100, hideOnTable: true },
+        { n: 'mat_K', l: 'Karakter (K)', t: 'slider', c: 'warning', def: 50, hideOnTable: true },
+        { n: 'mat_M', l: 'Minat (M)', t: 'slider', c: 'danger', def: 50, hideOnTable: true }
+      ]},
+      
+      'MasterProyek': { idF: 'id_proyek', fields: [ { n: 'id_proyek', l: 'ID Proyek', t: 'text', req: true, hideOnTable: true }, { n: 'judul_proyek', l: 'Judul Proyek', t: 'text', req: true }, { n: 'deskripsi_proyek', l: 'Deskripsi Proyek', t: 'text' }, { n: 'fase', l: 'Fase', t: 'select', opts: [{v:'A',t:'Fase A'},{v:'B',t:'Fase B'},{v:'C',t:'Fase C'},{v:'D',t:'Fase D'},{v:'E',t:'Fase E'},{v:'F',t:'Fase F'}] }, { n: 'id_kelas', l: 'Kelas', t: 'select', src: 'MasterKelas', v: 'id_kelas', txt: 'nama_kelas', req: true }, { n: 'id_periode', l: 'Periode', t: 'select', src: 'MasterPeriode', v: 'id_periode', txt: 'tahun_ajaran', req: true } ]},
+      'MasterMBK': { idF: 'id_jenis', fields: [ 
+        { n: 'id_jenis', l: 'ID Aktivitas', t: 'text', req: true, hideOnTable: true }, 
+        { n: 'kategori_penilaian', l: 'Aktivitas MBK', t: 'text', req: true }, 
+        { n: 'keterangan', l: 'Penjelasan MBK', t: 'text' },
+        { n: 'stnkm_badge', l: 'Poin STNKM', t: 'virtual_stnkm' },
+        { n: 'mat_S', l: 'Skill (S)', t: 'slider', c: 'primary', def: 100, hideOnTable: true },
+        { n: 'mat_T', l: 'Teori (T)', t: 'slider', c: 'success', def: 100, hideOnTable: true },
+        { n: 'mat_N', l: 'Nalar (N)', t: 'slider', c: 'info', def: 100, hideOnTable: true },
+        { n: 'mat_K', l: 'Karakter (K)', t: 'slider', c: 'warning', def: 100, hideOnTable: true },
+        { n: 'mat_M', l: 'Minat (M)', t: 'slider', c: 'danger', def: 100, hideOnTable: true }
+      ]},
+      'MasterTargetP5': { 
+        idF: 'id_target', 
+        fields: [ 
+          { n: 'id_target', l: 'ID Target', t: 'text', req: true, hideOnTable: true }, 
+          { n: 'id_proyek', l: 'Judul Proyek', t: 'select', src: 'MasterProyek', v: 'id_proyek', txt: 'judul_proyek', req: true }, 
+          { n: 'id_kategori', l: 'STNKM', t: 'select', src: 'MasterKategoriPenilaian', v: 'id_kategori', txt: 'nama_kategori', req: true }, 
+          { n: 'dimensi', l: 'Dimensi P5', t: 'text', req: true }, 
+          { n: 'elemen', l: 'Elemen', t: 'text' }, 
+          { n: 'sub_elemen', l: 'Sub Elemen', t: 'text' }, 
+          { n: 'capaian_akhir_fase', l: 'Capaian', t: 'text' },
+          { n: 'relasi_stnkm', l: 'Relasi Matriks', t: 'stnkm_check', req: true, opts: [
+            {v: 'poin_S', t: 'Serap Poin Skill (S)'},{v: 'poin_T', t: 'Serap Poin Teori (T)'},{v: 'poin_N', t: 'Serap Poin Nalar (N)'},{v: 'poin_K', t: 'Serap Poin Karakter (K)'},{v: 'poin_M', t: 'Serap Poin Minat (M)'}
+          ]}
+        ]
+      },
+      'MasterBankPengetahuan': { 
+        idF: 'id_bank', 
+        fields: [ 
+          { n: 'id_bank', l: 'Kode Materi', t: 'text', req: true, hideOnTable: true }, 
+          { n: 'kategori_aset', l: 'Aset & STES', t: 'select', opts: [
+              {v:'Manusia', t:'Manusia'},{v:'Budaya', t:'Budaya'},{v:'Alam', t:'Alam'},
+              {v:'Sains', t:'Sains'},{v:'Teknologi', t:'Teknologi'},{v:'Entrepreneurship', t:'Ekonomi'},
+              {v:'Sosial', t:'Sosial'},{v:'Modernisasi', t:'Modernisasi'}
+            ], req: true 
+          }, 
+          { n: 'nama_topik', l: 'Materi', t: 'text', req: true }, 
+          { n: 'deskripsi', l: 'Deskripsi', t: 'text' },
+          { n: 'stnkm_badge', l: 'Poin STNKM', t: 'virtual_stnkm_base' },
+          { n: 'base_S', l: 'Baseline Skill (S)', t: 'slider', c: 'primary', def: 100, hideOnTable: true },
+          { n: 'base_T', l: 'Baseline Teori (T)', t: 'slider', c: 'success', def: 100, hideOnTable: true },
+          { n: 'base_N', l: 'Baseline Nalar (N)', t: 'slider', c: 'info', def: 100, hideOnTable: true },
+          { n: 'base_K', l: 'Baseline Karakter (K)', t: 'slider', c: 'warning', def: 50, hideOnTable: true },
+          { n: 'base_M', l: 'Baseline Minat (M)', t: 'slider', c: 'danger', def: 50, hideOnTable: true }
+        ]
+      },
+      'MasterAgama': { idF: 'id_agama', fields: [ { n: 'id_agama', l: 'Kode Agama', t: 'text', req: true, hideOnTable: true }, { n: 'nama_agama', l: 'Nama Agama', t: 'text', req: true } ]},
+      'MasterSuku': { idF: 'id_suku', fields: [ { n: 'id_suku', l: 'Kode Suku', t: 'text', req: true, hideOnTable: true }, { n: 'nama_suku', l: 'Nama Suku Bangsa', t: 'text', req: true } ]},
+      'MasterPekerjaan': { idF: 'id_pekerjaan', fields: [ { n: 'id_pekerjaan', l: 'Kode Pekerjaan', t: 'text', req: true, hideOnTable: true }, { n: 'nama_pekerjaan', l: 'Jenis Pekerjaan', t: 'text', req: true } ]},
+      'MasterWilayah': { idF: 'id_wilayah', fields: [ { n: 'id_wilayah', l: 'Kode Wilayah', t: 'text', req: true, hideOnTable: true }, { n: 'provinsi', l: 'Provinsi', t: 'text', req: true }, { n: 'kabupaten_kota', l: 'Kabupaten/Kota', t: 'text', req: true }, { n: 'kecamatan', l: 'Kecamatan', t: 'text', req: true }, { n: 'kelurahan_desa', l: 'Kelurahan/Desa', t: 'text', req: true }, { n: 'kode_pos', l: 'Kode Pos', t: 'text' } ]},
+      'MasterSekolahAsal': { idF: 'id_sekolah_asal', fields: [ { n: 'id_sekolah_asal', l: 'Kode Sekolah', t: 'text', req: true, hideOnTable: true }, { n: 'npsn_sekolah', l: 'NPSN Asal', t: 'text' }, { n: 'nama_sekolah', l: 'Nama Institusi', t: 'text', req: true }, { n: 'jenjang_sekolah', l: 'Jenjang', t: 'select', opts: [{v:'PAUD',t:'PAUD'},{v:'SD',t:'SD'},{v:'SMP',t:'SMP'},{v:'SMA',t:'SMA'},{v:'Lainnya',t:'Lainnya'}] }, { n: 'alamat_sekolah', l: 'Lokasi', t: 'select', src: 'MasterWilayah', v: 'kabupaten_kota', txt: 'kabupaten_kota' } ]},
+      'MasterOrtu': { idF: 'id_ortu', fields: [ { n: 'id_ortu', l: 'ID Ortu', t: 'text', req: true, hideOnTable: true }, { n: 'nama_ayah', l: 'Nama Ayah', t: 'text' }, { n: 'id_pekerjaan_ayah', l: 'Kerja Ayah', t: 'select', src: 'MasterPekerjaan', v: 'id_pekerjaan', txt: 'nama_pekerjaan' }, { n: 'nama_ibu', l: 'Nama Ibu', t: 'text' }, { n: 'id_pekerjaan_ibu', l: 'Kerja Ibu', t: 'select', src: 'MasterPekerjaan', v: 'id_pekerjaan', txt: 'nama_pekerjaan' }, { n: 'jalan_ortu', l: 'Alamat Desa', t: 'select', src: 'MasterWilayah', v: 'kelurahan_desa', txt: 'kelurahan_desa' }, { n: 'id_wilayah_ortu', l: 'Domisili', t: 'select', src: 'MasterWilayah', v: 'id_wilayah', txt: 'kabupaten_kota' } ]},
+      'MasterWali': { idF: 'id_wali', fields: [ { n: 'id_wali', l: 'ID Wali', t: 'text', req: true, hideOnTable: true }, { n: 'nama_wali', l: 'Nama Wali', t: 'text', req: true }, { n: 'id_pekerjaan_wali', l: 'Kerja Wali', t: 'select', src: 'MasterPekerjaan', v: 'id_pekerjaan', txt: 'nama_pekerjaan' }, { n: 'jalan_wali', l: 'Alamat Desa', t: 'select', src: 'MasterWilayah', v: 'kelurahan_desa', txt: 'kelurahan_desa' }, { n: 'id_wilayah_wali', l: 'Domisili', t: 'select', src: 'MasterWilayah', v: 'id_wilayah', txt: 'kabupaten_kota' } ]}
+    };
+
+    function showL(t="Memproses...") { document.getElementById('loadingText').innerText = t; document.getElementById('loadingOverlay').style.display = 'flex'; }
+    function hideL() { document.getElementById('loadingOverlay').style.display = 'none'; }
+
+    function loadData() {
+      showL("Menyiapkan Data Referensi...");
+      google.script.run
+        .withSuccessHandler(res => { DB = res || {}; fetchTableData(); })
+        .withFailureHandler(err => { hideL(); Swal.fire('Error', err.message, 'error'); })
+        .getMasterReferences();
+    }
+    
+    loadData();
+
+    function sortMasterTable(colName) {
+      if (sortMasterCol === colName) {
+        sortMasterAsc = !sortMasterAsc;
+      } else {
+        sortMasterCol = colName;
+        sortMasterAsc = true;
+      }
+      fetchTableData();
+    }
+
+    function fetchTableData() {
+      showL(`Memuat ${currentMasterTab}...`);
+      google.script.run
+        .withSuccessHandler(res => { hideL(); renderBackendTable(res); })
+        .withFailureHandler(err => { hideL(); Swal.fire('Error Fetch', err.message, 'error'); })
+        .getPaginatedMasterTable(currentMasterTab, currentMasterPage, rowsPerPage, searchMasterQuery, sortMasterCol, sortMasterAsc, SCHEMA[currentMasterTab]);
+    }
+
+    function renderBackendTable(response) {
+      let sch = SCHEMA[currentMasterTab];
+      if(!sch) return;
+      
+      let visibleFields = sch.fields.filter(f => !f.hideOnTable);
+      
+      let thHtml = visibleFields.map(f => {
+        let icon = "fa-sort text-muted opacity-25";
+        if (sortMasterCol === f.n) icon = sortMasterAsc ? "fa-sort-up text-primary" : "fa-sort-down text-primary";
+        return `<th class="sortable text-nowrap" onclick="sortMasterTable('${f.n}')">${f.l} <i class="fa-solid ${icon} ms-1"></i></th>`;
+      }).join("");
+      
+      document.getElementById('masterThead').innerHTML = `<tr>${thHtml}<th>Aksi</th></tr>`;
+      
+      let tbody = "";
+      response.data.forEach(r => {
+        let tds = visibleFields.map(f => {
+          let val = r[f.n];
+          
+          if (f.t === 'virtual_stnkm' || f.t === 'virtual_stnkm_base') {
+            let prf = f.t === 'virtual_stnkm_base' ? 'base_' : 'mat_';
+            let vS = Math.round((parseFloat(r[prf+'S'])||0)*100);
+            let vT = Math.round((parseFloat(r[prf+'T'])||0)*100);
+            let vN = Math.round((parseFloat(r[prf+'N'])||0)*100);
+            let vK = Math.round((parseFloat(r[prf+'K'])||0)*100);
+            let vM = Math.round((parseFloat(r[prf+'M'])||0)*100);
+            
+            return `<td>
+              <div class="d-flex justify-content-center flex-wrap gap-1" style="max-width: 150px; margin: 0 auto;">
+                <span class="badge bg-primary px-1" title="Skill">${vS}% S</span>
+                <span class="badge bg-success px-1" title="Teori">${vT}% T</span>
+                <span class="badge bg-info text-dark px-1" title="Nalar">${vN}% N</span>
+                <span class="badge bg-warning text-dark px-1" title="Karakter">${vK}% K</span>
+                <span class="badge bg-danger px-1" title="Minat">${vM}% M</span>
+              </div>
+            </td>`;
+          }
+          
+          if(f.src) { let found = DB[f.src]?.find(x => String(x[f.v]) === String(val)); val = found ? found[f.txt] : (val || '-'); }
+          return `<td>${val}</td>`;
+        }).join("");
+        
+        tbody += `<tr>${tds}<td>
+          <div class="d-flex justify-content-center gap-1">
+             <button class="btn btn-sm btn-warning" onclick='openCrudModal(${JSON.stringify(r).replace(/'/g, "&apos;")})'><i class="fa-solid fa-pen"></i></button>
+             <button class="btn btn-sm btn-danger" onclick="delMaster('${currentMasterTab}','${r[sch.idF]}','${sch.idF}')"><i class="fa-solid fa-trash"></i></button>
+          </div>
+        </td></tr>`;
+      });
+      
+      document.getElementById('masterTbody').innerHTML = tbody || `<tr><td colspan="${visibleFields.length+1}" class="text-muted py-4">Data tidak ditemukan.</td></tr>`;
+      
+      document.getElementById('pageIndicatorMaster').innerText = `Halaman ${response.currentPage} dari ${response.totalPages} (Total: ${response.totalRows} data)`;
+      document.getElementById('btnPrevMaster').disabled = (response.currentPage === 1); 
+      document.getElementById('btnNextMaster').disabled = (response.currentPage === response.totalPages);
+    }
+
+    function switchTab(tbl, elem, event) {
+      if(event) event.preventDefault();
+      document.querySelectorAll('#masterTabs .nav-link').forEach(el => el.classList.remove('active', 'fw-bold', 'text-primary'));
+      document.querySelectorAll('#masterTabs .dropdown-item').forEach(el => el.classList.remove('active', 'bg-primary', 'text-white'));
+      
+      if(elem) {
+         elem.classList.add('active', 'bg-primary', 'text-white');
+         let parentDropdown = elem.closest('.dropdown');
+         if(parentDropdown) parentDropdown.querySelector('.nav-link.dropdown-toggle').classList.add('active', 'fw-bold', 'text-primary');
+      }
+      currentMasterTab = tbl; currentMasterPage = 1; searchMasterQuery = ""; sortMasterCol = ""; sortMasterAsc = true;
+      let searchEl = document.getElementById('searchMasterInput'); if(searchEl) searchEl.value = "";
+      document.getElementById('tabTitle').innerText = "Data " + tbl.replace('Master','').replace(/([A-Z])/g, ' $1').trim();
+      
+      fetchTableData(); 
+    }
+
+    function handleMasterSearch(val) { searchMasterQuery = val; currentMasterPage = 1; fetchTableData(); }
+    function changeMasterPage(direction) { currentMasterPage += direction; fetchTableData(); }
+
+    function autofillSTNKM(gabunganVal) {
+      if (currentMasterTab !== 'MasterMateri') return;
+      let bankInfo = DB.MasterBankPengetahuan?.find(b => `${b.nama_topik} (${b.kategori_aset})` === gabunganVal);
+      if (bankInfo) {
+        const mappings = { S: 'mat_S', T: 'mat_T', N: 'mat_N', K: 'mat_K', M: 'mat_M' };
+        for (let key in mappings) {
+          let fieldId = 'c_' + mappings[key]; let labelId = 'val_' + mappings[key]; let decVal = bankInfo['base_' + key];
+          if (decVal !== undefined) {
+            let pct = parseFloat(decVal) * 100; 
+            let slider = document.getElementById(fieldId);
+            if (slider) { slider.value = pct; document.getElementById(labelId).innerText = pct + '%'; }
+          }
+        }
+        let descField = document.getElementById('c_deskripsi_kompetensi');
+        if (descField && bankInfo.deskripsi && !descField.value) descField.value = bankInfo.deskripsi;
+      }
+    }
+
+    function openCrudModal(editData = null) {
+      let sch = SCHEMA[currentMasterTab];
+      let judulModal = currentMasterTab.replace('Master','').replace(/([A-Z])/g, ' $1').trim();
+      document.getElementById('crudModalTitle').innerHTML = (editData ? "<i class='fa-solid fa-pen-to-square me-2'></i> Edit " : "<i class='fa-solid fa-plus me-2'></i> Tambah ") + judulModal;
+      document.getElementById('crudOldId').value = editData ? editData[sch.idF] : "";
+      
+      let formHtml = "";
+      let isMatrixForm = (currentMasterTab === 'MasterMateri' || currentMasterTab === 'MasterMBK' || currentMasterTab === 'MasterBankPengetahuan');
+      
+      if (currentMasterTab === 'MasterMateri') {
+        formHtml += `<div class="col-md-12 mb-3"><div class="alert alert-info py-2 m-0 border-0 shadow-sm"><i class="fa-solid fa-circle-info me-2"></i> Pilih Topik dari <b>Bank Pengetahuan</b>. Matriks STNKM akan disetel secara otomatis.</div></div>`;
+      }
+
+      sch.fields.forEach(f => {
+        if (f.t.startsWith('virtual')) return;
+
+        let val = editData ? editData[f.n] : (f.def !== undefined ? f.def : "");
+        
+        if (f.t === 'slider') {
+          let uiVal = val;
+          if (editData && val !== "") uiVal = parseFloat(val) * 100;
+          else if (!editData) uiVal = f.def;
+          
+          formHtml += `
+            <div class="col-md-6 mb-2">
+              <div class="stnkm-slider-box border-start border-4 border-${f.c} shadow-sm">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <label class="fw-bold text-dark small m-0">${f.l}</label>
+                  <span class="badge bg-${f.c} rounded-pill shadow-sm" id="val_${f.n}">${uiVal}%</span>
+                </div>
+                <input type="range" class="form-range mt-1" id="c_${f.n}" min="0" max="100" step="10" value="${uiVal}" oninput="document.getElementById('val_${f.n}').innerText = this.value + '%'">
+              </div>
+            </div>`;
+        }
+        else if (f.t === 'stnkm_check') {
+          let checkedVals = val ? val.split(',') : [];
+          formHtml += `<div class="col-md-12 mb-3">
+                         <label class="fw-bold form-label text-secondary small">${f.l}</label>
+                         <input type="hidden" id="c_${f.n}" value="${val}" ${f.req?'required':''}>
+                         <div class="d-flex flex-wrap gap-3 mt-1 p-2 border rounded bg-light">`;
+          f.opts.forEach(o => {
+            let isChecked = checkedVals.includes(o.v) ? 'checked' : '';
+            formHtml += `<div class="form-check">
+                           <input class="form-check-input chk-${f.n}" type="checkbox" value="${o.v}" id="chk_${f.n}_${o.v}" ${isChecked} onchange="updateHiddenCheck('${f.n}')">
+                           <label class="form-check-label" for="chk_${f.n}_${o.v}">${o.t}</label>
+                         </div>`;
+          });
+          formHtml += `  </div></div>`;
+        } 
+        else {
+          formHtml += `<div class="col-md-${isMatrixForm ? '6' : '12'} mb-3"><label class="fw-bold form-label text-secondary small">${f.l}</label>`;
+          
+          if(f.t === 'select') {
+            let oc = f.onchange ? `onchange="${f.onchange}"` : ''; 
+            formHtml += `<select class="form-select border-secondary" id="c_${f.n}" ${f.req?'required':''} ${oc}>`;
+            if(f.opts) {
+              f.opts.forEach(o => formHtml += `<option value="${o.v}" ${val==o.v?'selected':''}>${o.t}</option>`);
+            } else if(f.src) {
+              formHtml += `<option value="">- Pilih -</option>`;
+              let renderedValues = []; 
+              
+              (DB[f.src]||[]).forEach(o => {
+                let optVal = o[f.v]; let optTxt = o[f.txt];
+                if (f.src === 'MasterBankPengetahuan') { optVal = `${o.nama_topik} (${o.kategori_aset})`; optTxt = optVal; } 
+                else if (f.src === 'MasterWilayah' && f.n.includes('wilayah')) { optTxt = `Kec. ${o.kecamatan}, ${o.kabupaten_kota}`; }
+                else if (f.src === 'MasterPeriode') { optTxt = `${o.tahun_ajaran} (Semester ${o.semester})`; }
+
+                if (!renderedValues.includes(optVal)) {
+                    renderedValues.push(optVal);
+                    formHtml += `<option value="${optVal}" ${String(val)===String(optVal)?'selected':''}>${optTxt}</option>`;
+                }
+              });
+            }
+            formHtml += `</select>`;
+          } 
+          else {
+            let isIdField = (f.n === sch.idF);
+            let isReq = (f.req && !isIdField) ? 'required' : ''; 
+            let readOnlyAttr = isIdField ? 'readonly placeholder="Otomatis Dibuat Sistem" style="background-color: #e9ecef; cursor: not-allowed;"' : '';
+            if (isIdField && !editData) val = ""; 
+            formHtml += `<input type="${f.t}" class="form-control border-secondary" id="c_${f.n}" value="${val}" ${isReq} ${readOnlyAttr}>`;
+          }
+          formHtml += `</div>`;
+        }
+      });
+      
+      document.getElementById('crudFormBody').innerHTML = formHtml;
+      let myModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('crudModal'));
+      myModal.show();
+    }
+
+    function updateHiddenCheck(fieldName) {
+      let boxes = document.querySelectorAll('.chk-' + fieldName + ':checked');
+      let vals = Array.from(boxes).map(b => b.value).join(',');
+      document.getElementById('c_' + fieldName).value = vals;
+    }
+
+    function handleCrudSubmit(e) {
+      e.preventDefault(); showL("Menyimpan Master...");
+      let sch = SCHEMA[currentMasterTab];
+      let rec = {}, oldId = document.getElementById('crudOldId').value;
+      
+      sch.fields.forEach(f => { 
+        if (f.t.startsWith('virtual')) return;
+        let rawVal = document.getElementById('c_'+f.n).value;
+        if (f.t === 'slider') rec[f.n] = parseFloat(rawVal) / 100;
+        else rec[f.n] = rawVal; 
+      });
+      
+      google.script.run
+        .withSuccessHandler(r => {
+          if(r.success) { 
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('crudModal')).hide(); 
+            loadData(); 
+            Toast.fire({icon:'success',title:r.message}); 
+          } 
+          else { hideL(); Swal.fire('Gagal', r.message, 'error'); }
+        })
+        .withFailureHandler(err => { hideL(); Swal.fire('Error Sistem', err.message, 'error'); })
+        .saveMasterData(currentMasterTab, rec, sch.idF, oldId);
+    }
+    
+    function delMaster(tbl, idVal, idF) {
+      Swal.fire({ title: 'Hapus data master?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Ya, Hapus!' }).then((res) => {
+        if(res.isConfirmed) { showL("Menghapus..."); google.script.run.withSuccessHandler(() => loadData()).withFailureHandler(err => { hideL(); Swal.fire('Gagal', err.message, 'error'); }).deleteMasterData(tbl, idVal, idF); }
+      });
+    }
+
+    // ==========================================================
+    // MESIN EKSPOR DOKUMEN PROFESIONAL (CSV & PDF NATIVE)
+    // ==========================================================
+    function exportMasterData(format) {
+      showL("Mempersiapkan Dokumen Ekspor...");
+      let sch = SCHEMA[currentMasterTab];
+      let judulLaporan = currentMasterTab.replace('Master','').replace(/([A-Z])/g, ' $1').trim();
+      let sek = (DB.PengaturanSekolah && DB.PengaturanSekolah.length > 0) ? DB.PengaturanSekolah[0] : { nama_sekolah: 'Sekolah', alamat_sekolah: '-', kota: '-', nama_kepsek: 'Kepala Sekolah', nip_kepsek: '-' };
+      
+      google.script.run
+        .withSuccessHandler(dataFull => {
+           hideL();
+           if(!dataFull || dataFull.length === 0) return Swal.fire('Kosong', 'Tidak ada data untuk diekspor.', 'info');
+
+           let visibleFields = sch.fields.filter(f => !f.hideOnTable);
+
+           // 1. FORMAT CSV
+           if(format === 'csv') {
+              let csvContent = "data:text/csv;charset=utf-8,";
+              csvContent += visibleFields.map(f => `"${f.l}"`).join(",") + "\n";
+              
+              dataFull.forEach(r => {
+                let baris = visibleFields.map(f => {
+                   let val = r[f.n];
+                   if (f.t.startsWith('virtual')) {
+                      let prf = f.t === 'virtual_stnkm_base' ? 'base_' : 'mat_';
+                      val = `S:${r[prf+'S']*100}% T:${r[prf+'T']*100}% N:${r[prf+'N']*100}% K:${r[prf+'K']*100}% M:${r[prf+'M']*100}%`;
+                   } else if (f.src) {
+                      let found = DB[f.src]?.find(x => String(x[f.v]) === String(val)); 
+                      val = found ? found[f.txt] : (val || '-');
+                   }
+                   return `"${String(val || '').replace(/"/g, '""').replace(/\n/g, ' ')}"`;
+                });
+                csvContent += baris.join(",") + "\n";
+              });
+              
+              let encodedUri = encodeURI(csvContent);
+              let link = document.createElement("a"); link.setAttribute("href", encodedUri);
+              link.setAttribute("download", `Laporan_${judulLaporan}_${new Date().getTime()}.csv`);
+              document.body.appendChild(link); link.click(); document.body.removeChild(link);
+           } 
+           
+           // 2. FORMAT PDF (Native Browser Engine dengan thead/tfoot)
+           else if (format === 'pdf') {
+              let printWin = window.open('', '', 'width=1024,height=768');
+              let today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+              
+              let html = `<html><head><title>Laporan Data ${judulLaporan}</title>
+                <style>
+                  @page { size: landscape; margin: 15mm; }
+                  body { font-family: 'Times New Roman', Times, serif; color: #000; font-size: 12px; }
+                  table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+                  th, td { border: 1px solid #000; padding: 8px; text-align: left; }
+                  .header-col { background-color: #f0f0f0; text-align: center; font-weight: bold; }
+                  .kop-surat-container { background-color: #fff; border: none; padding: 0 0 20px 0; }
+                  .kop-surat { text-align: center; border-bottom: 3px solid #000; padding-bottom: 10px; }
+                  .kop-surat h3 { margin: 0; font-size: 22px; text-transform: uppercase; }
+                  .kop-surat p { margin: 5px 0 0 0; font-size: 14px; font-weight: normal; }
+                  .ttd-box { width: 250px; float: right; text-align: center; margin-top: 30px; }
+                  thead { display: table-header-group; }
+                  tfoot { display: table-footer-group; }
+                  tr { page-break-inside: avoid; }
+                </style>
+              </head><body>
+              
+              <table>
+                <thead>
+                  <tr>
+                    <th colspan="${visibleFields.length}" class="kop-surat-container">
+                      <div class="kop-surat">
+                        <h3>PANGKALAN DATA ${judulLaporan}</h3>
+                        <p>${sek.nama_sekolah} | ${sek.alamat_sekolah}</p>
+                      </div>
+                    </th>
+                  </tr>
+                  <tr>
+              `;
+              
+              visibleFields.forEach(f => html += `<th class="header-col">${f.l}</th>`);
+              html += `</tr></thead><tbody>`;
+              
+              dataFull.forEach(r => {
+                html += `<tr>`;
+                visibleFields.forEach(f => {
+                   let val = r[f.n];
+                   if (f.t.startsWith('virtual')) {
+                      let prf = f.t === 'virtual_stnkm_base' ? 'base_' : 'mat_';
+                      val = `S:${r[prf+'S']*100}%  T:${r[prf+'T']*100}%  N:${r[prf+'N']*100}%  K:${r[prf+'K']*100}%  M:${r[prf+'M']*100}%`;
+                   } else if (f.src) {
+                      let found = DB[f.src]?.find(x => String(x[f.v]) === String(val)); 
+                      val = found ? found[f.txt] : (val || '-');
+                   }
+                   html += `<td>${val || '-'}</td>`;
+                });
+                html += `</tr>`;
+              });
+              
+              html += `
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colspan="${visibleFields.length}" style="border: none; padding: 0;">
+                      <div class="ttd-box">
+                        ${sek.kota}, ${today}<br>Kepala Sekolah<br><br><br><br><br>
+                        <strong>${sek.nama_kepsek}</strong><br>NIP. ${sek.nip_kepsek}
+                      </div>
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+              </body></html>`;
+
+              printWin.document.write(html);
+              printWin.document.close();
+              printWin.focus();
+              setTimeout(() => { 
+                printWin.print(); 
+                printWin.close(); 
+              }, 800);
+           }
+        })
+        .withFailureHandler(err => { hideL(); Swal.fire('Error Export', err.message, 'error'); })
+        .getExportMasterData(currentMasterTab, searchMasterQuery, sortMasterCol, sortMasterAsc, SCHEMA[currentMasterTab]);
+    }
+  </script>
+
+</body>
+
+</html>

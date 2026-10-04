@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jurnal Observasi - EduRapor</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #f0f2f5;
+      font-family: sans-serif;
+    }
+
+    #loadingOverlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.95);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .feed-card {
+      border: none;
+      border-radius: 15px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .feed-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .feed-avatar {
+      width: 45px;
+      height: 45px;
+      border-radius: 50%;
+      background: #3f51b5;
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 20px;
+      font-weight: bold;
+      margin-right: 15px;
+    }
+
+    .feed-meta h6 {
+      margin: 0;
+      font-weight: bold;
+      font-size: 15px;
+    }
+
+    .feed-meta small {
+      color: #6c757d;
+      font-size: 12px;
+    }
+
+    .feed-body {
+      font-size: 15px;
+      line-height: 1.6;
+      color: #333;
+    }
+
+    .feed-img-attachment {
+      max-width: 100%;
+      max-height: 300px;
+      border-radius: 10px;
+      margin-top: 15px;
+      cursor: pointer;
+      object-fit: cover;
+      border: 1px solid #ddd;
+    }
+
+    .feed-footer {
+      border-top: 1px solid #e9ecef;
+      margin-top: 15px;
+      padding-top: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .badge-stnkm {
+      width: 35px;
+      text-align: center;
+      margin-right: 3px;
+      font-size: 11px;
+    }
+
+    .nav-pills .nav-link {
+      color: #495057;
+      font-weight: 500;
+      border-radius: 30px;
+      padding: 6px 16px;
+      margin-right: 5px;
+      font-size: 14px;
+    }
+
+    .nav-pills .nav-link.active {
+      background-color: #3f51b5;
+      color: white;
+    }
+
+    .sortable {
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 0.2s;
+      white-space: nowrap;
+    }
+
+    .sortable:hover {
+      background-color: #e2e6ea !important;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="loadingOverlay">
+    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div>
+    <h5 class="mt-3 fw-bold text-primary" id="loadingText">Menyinkronkan Database...</h5>
+  </div>
+
+  <script>
+    const SCRIPT_URL = "<?= scriptUrl ?>"; 
+  </script>
+  <?!= include('navbar'); ?>
+
+  <div class="container mt-4 mb-5">
+    <div class="row">
+
+      <!-- KOLOM KIRI: FORM INPUT -->
+      <div class="col-lg-5 mb-4">
+        <div class="card feed-card p-4 border-top border-primary border-4 sticky-lg-top" style="top: 80px;">
+          <h5 class="fw-bold mb-3"><i class="fa-solid fa-pen-nib text-primary me-2"></i> Tulis Jurnal Baru</h5>
+
+          <form id="formJurnal" onsubmit="handleJurnalSubmit(event)">
+            <div class="row mb-2">
+              <div class="col-7 mb-2">
+                <select class="form-select form-select-sm border-secondary fw-bold" id="j_konteks" onchange="updateDropdowns()" required>
+                  <option value="KBM">Kegiatan Pembelajaran (KBM)</option>
+                  <option value="OBSERVASI">Observasi Perilaku Bebas</option>
+                </select>
+              </div>
+              <div class="col-5 mb-2">
+                <input type="date" class="form-control form-control-sm border-secondary fw-bold text-primary text-center" id="j_tanggal" required title="Tanggal Kejadian" placeholder="Tgl Kejadian">
+              </div>
+              <div class="col-6 mb-2">
+                <select class="form-select form-select-sm border-secondary fw-bold text-primary" id="j_kelas" onchange="updateDropdowns()" required>
+                  <option value="">- Pilih Kelas -</option>
+                </select>
+              </div>
+              <div class="col-6 mb-2">
+                <select class="form-select form-select-sm border-secondary" id="j_siswa" required>
+                  <option value="">- Siswa -</option>
+                </select>
+              </div>
+              <div class="col-12 mb-2">
+                <select class="form-select form-select-sm border-secondary" id="j_materi" required>
+                  <option value="">- Pilih Materi / Aktivitas -</option>
+                </select>
+              </div>
+            </div>
+
+            <textarea class="form-control mb-3 bg-light" id="j_narasi" rows="4" placeholder="Ketik kejadian anekdotal di sini..." required style="resize: none;"></textarea>
+
+            <div class="mb-3">
+              <label class="small fw-bold text-muted mb-1"><i class="fa-solid fa-paperclip"></i> Bukti / Lampiran (Opsional)</label>
+              <input class="form-control form-control-sm border-secondary" type="file" id="j_file" accept="image/*,video/*,application/pdf">
+            </div>
+
+            <div class="accordion mb-4" id="accPengaturan">
+              <div class="accordion-item border-0 bg-transparent">
+                <h2 class="accordion-header">
+                  <button class="accordion-button collapsed px-0 py-2 bg-transparent fw-bold text-primary shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOpsi">
+                    <i class="fa-solid fa-gears me-2"></i> Pengaturan AI & Dampak Rapor
+                  </button>
+                </h2>
+                <div id="collapseOpsi" class="accordion-collapse collapse" data-bs-parent="#accPengaturan">
+                  <div class="accordion-body px-0 pt-2 pb-0">
+
+                    <!-- PEMBARUAN: Penambahan Mode Claude -->
+                    <div class="mb-3 p-3 bg-white rounded border">
+                      <label class="fw-bold small mb-2 text-dark">1. Otak Analisis (NLP)</label>
+                      <div class="form-check mb-1">
+                        <input class="form-check-input" type="radio" name="ai_mode" id="ai_claude" value="CLAUDE" checked>
+                        <label class="form-check-label small" for="ai_claude"><b>Claude 3.5 Sonnet</b> (Cerdas)</label>
+                      </div>
+                      <div class="form-check mb-1">
+                        <input class="form-check-input" type="radio" name="ai_mode" id="ai_qwen" value="QWEN">
+                        <label class="form-check-label small" for="ai_qwen"><b>Qwen 2.5-72B</b> (Gratis/OpenRouter)</label>
+                      </div>
+                      <div class="form-check mb-1">
+                        <input class="form-check-input" type="radio" name="ai_mode" id="ai_deepseek" value="DEEPSEEK">
+                        <label class="form-check-label small" for="ai_deepseek"><b>DeepSeek V4</b> (Platform DeepSeek)</label>
+                      </div>
+                      <div class="form-check mb-1">
+                        <input class="form-check-input" type="radio" name="ai_mode" id="openkey" value="OPENKEY">
+                        <label class="form-check-label small" for="ai_openkey"><b>OPENKEY AI</b> (Platform Openkey)</label>
+                      </div>
+                      <div class="form-check mb-1">
+                        <input class="form-check-input" type="radio" name="ai_mode" id="ai_gemini" value="GEMINI">
+                        <label class="form-check-label small" for="ai_gemini"><b>Google Gemini</b> (API Keys)</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="ai_mode" id="ai_lokal" value="LOKAL">
+                        <label class="form-check-label small" for="ai_lokal"><b>Heuristik Lokal</b> (Offline)</label>
+                      </div>
+                    </div>
+
+                    <div class="p-3 bg-white rounded border">
+                      <label class="fw-bold small mb-2 text-dark">2. Dampak ke Nilai Akademik</label>
+                      <div class="form-check mb-1">
+                        <input class="form-check-input" type="radio" name="impact_mode" id="imp_bonus" value="BONUS">
+                        <label class="form-check-label small" for="imp_bonus"><b>Mode Intervensi</b> (Ubah Angka Rapor)</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="impact_mode" id="imp_pisah" value="PISAH" checked>
+                        <label class="form-check-label small" for="imp_pisah"><b>Mode Terpisah</b> (Hanya Narasi Kualitatif)</label>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 fw-bold py-2 shadow-sm rounded-pill"><i class="fa-solid fa-paper-plane me-2"></i> Posting Jurnal</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- KOLOM KANAN: KONTEN DINAMIS (TAB) -->
+      <div class="col-lg-7">
+
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3 gap-2">
+          <ul class="nav nav-pills" id="jurnalTabs" role="tablist">
+            <li class="nav-item">
+              <button class="nav-link active shadow-sm" data-bs-toggle="pill" data-bs-target="#tab-feed" type="button"><i class="fa-solid fa-timeline me-1"></i> Linimasa</button>
+            </li>
+            <li class="nav-item">
+              <button class="nav-link shadow-sm" data-bs-toggle="pill" data-bs-target="#tab-tabel" type="button"><i class="fa-solid fa-table me-1"></i> Tabel Analitik</button>
+            </li>
+          </ul>
+
+          <select class="form-select form-select-sm w-auto border-0 bg-white shadow-sm fw-bold text-primary" id="f_kelas" onchange="fetchFeedData()">
+            <option value="">- Pilih Kelas untuk Melihat -</option>
+          </select>
+        </div>
+
+        <div class="tab-content" id="jurnalTabsContent">
+
+          <div class="tab-pane fade show active" id="tab-feed">
+            <div id="feedContainer">
+              <div class="text-center py-5 text-muted"><i class="fa-solid fa-mug-hot fa-3x mb-3 opacity-25"></i>
+                <h5>Pilih Kelas untuk merender riwayat jurnal.</h5>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-pane fade" id="tab-tabel">
+            <div class="card shadow-sm border-0 rounded-4 p-3">
+              <div class="row mb-3 align-items-center">
+                <div class="col-md-6 mb-2">
+                  <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white text-info border-info"><i class="fa-solid fa-magnifying-glass"></i></span>
+                    <input type="text" class="form-control border-info" id="searchJurnalInput" placeholder="Cari nama, kejadian, atau tanggal..." oninput="handleJurnalSearch(this.value)">
+                  </div>
+                </div>
+                <div class="col-md-6 mb-2 text-md-end">
+                  <button class="btn btn-sm btn-outline-success fw-bold me-2" onclick="exportJurnalData('csv')"><i class="fa-solid fa-file-csv"></i> CSV</button>
+                  <button class="btn btn-sm btn-outline-danger fw-bold" onclick="exportJurnalData('pdf')"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+                </div>
+              </div>
+
+              <div class="table-responsive">
+                <table class="table table-bordered table-hover text-center align-middle" style="font-size: 13px;">
+                  <thead class="table-secondary" id="jurnalThead">
+                  </thead>
+                  <tbody id="jurnalTableBody"></tbody>
+                </table>
+              </div>
+
+              <div class="d-flex justify-content-between align-items-center mt-2">
+                <button class="btn btn-sm btn-outline-primary" id="btnPrevJurnal" onclick="changeJurnalPage(-1)"><i class="fa-solid fa-chevron-left"></i> Sebelumnya</button>
+                <span id="pageIndicatorJurnal" class="text-muted fw-bold small">Halaman 1</span>
+                <button class="btn btn-sm btn-outline-primary" id="btnNextJurnal" onclick="changeJurnalPage(1)">Selanjutnya <i class="fa-solid fa-chevron-right"></i></button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <script>
+    let activeLoaderTimer = null;
+    function showL(t="Memproses...") { 
+      let textEl = document.getElementById('loadingText');
+      if (textEl) textEl.innerText = t;
+      document.getElementById('loadingOverlay').style.display = 'flex'; 
+      if(activeLoaderTimer) clearTimeout(activeLoaderTimer);
+      activeLoaderTimer = setTimeout(() => hideL(), 8000); 
+    }
+    
+    function hideL() { 
+      document.getElementById('loadingOverlay').style.display = 'none'; 
+      if(activeLoaderTimer) clearTimeout(activeLoaderTimer);
+    }
+
+    let DB = {};
+    let cUser = null;
+    let editJurnalId = null; 
+    let idPeriodeAktifGlobal = "";
+
+    let searchJurnalQuery = "";
+    let sortJurnalCol = "tanggal";
+    let sortJurnalAsc = false; 
+    let currentJurnalPage = 1;
+    const rowsPerJurnalPage = 10;
+
+    try {
+      cUser = JSON.parse(sessionStorage.getItem('eduUser'));
+      if(!cUser || !cUser.name) {
+        window.top.location.href = SCRIPT_URL + "?page=login";
+      } else {
+        loadData(); 
+      }
+    } catch(e) {
+      hideL();
+      Swal.fire('Error Sesi', 'Sesi tidak valid. Harap login ulang.', 'error');
+    }
+
+    const HEURISTIK_DICT = {
+        "memimpin": { S: 1.0, T: 0.0, N: 1.0, K: 3.0, M: 1.0 },
+        "membantu teman": { S: 1.0, T: 0.0, N: 0.0, K: 4.0, M: 0.0 },
+        "gotong royong": { S: 1.0, T: 0.0, N: 0.0, K: 4.0, M: 1.0 },
+        "berani": { S: 0.0, T: 0.0, N: 0.0, K: 2.0, M: 1.0 },
+        "jujur": { S: 0.0, T: 0.0, N: 0.0, K: 5.0, M: 0.0 },
+        "bertanggung jawab": { S: 0.0, T: 0.0, N: 0.0, K: 4.0, M: 1.0 },
+        "disiplin": { S: 0.0, T: 0.0, N: 0.0, K: 3.0, M: 0.0 },
+        "tepat waktu": { S: 0.0, T: 0.0, N: 0.0, K: 3.0, M: 0.0 },
+        "sopan": { S: 0.0, T: 0.0, N: 0.0, K: 3.0, M: 0.0 },
+        "santun": { S: 0.0, T: 0.0, N: 0.0, K: 3.0, M: 0.0 },
+        "menghargai pendapat": { S: 0.0, T: 0.0, N: 1.0, K: 3.0, M: 0.0 },
+        "merapikan alat": { S: 2.0, T: 0.0, N: 0.0, K: 3.0, M: 0.0 },
+        "menjaga kebersihan": { S: 1.0, T: 0.0, N: 0.0, K: 3.0, M: 0.0 },
+        "sabar": { S: 0.0, T: 0.0, N: 0.0, K: 2.0, M: 0.0 },
+        "empati": { S: 0.0, T: 0.0, N: 0.0, K: 3.0, M: 0.0 },
+        "mediator": { S: 0.0, T: 0.0, N: 2.0, K: 3.0, M: 0.0 },
+        "mengakui kesalahan": { S: 0.0, T: 0.0, N: 0.0, K: 4.0, M: 0.0 },
+        "meminta maaf": { S: 0.0, T: 0.0, N: 0.0, K: 3.0, M: 0.0 },
+        "santun berdiskusi": { S: 0.0, T: 0.0, N: 1.0, K: 3.0, M: 1.0 },
+        "inisiatif membersihkan": { S: 1.0, T: 0.0, N: 0.0, K: 3.0, M: 1.0 },
+        "patuh aturan": { S: 0.0, T: 0.0, N: 0.0, K: 3.0, M: 0.0 },
+        "toleran": { S: 0.0, T: 0.0, N: 0.0, K: 3.0, M: 0.0 },
+        "kooperatif": { S: 1.0, T: 0.0, N: 0.0, K: 3.0, M: 1.0 },
+        "ringan tangan": { S: 1.0, T: 0.0, N: 0.0, K: 3.0, M: 0.0 },
+        "tekun": { S: 1.0, T: 1.0, N: 0.0, K: 3.0, M: 2.0 },
+        "pantang menyerah": { S: 1.0, T: 0.0, N: 2.0, K: 3.0, M: 3.0 },
+        "rajin": { S: 1.0, T: 1.0, N: 0.0, K: 3.0, M: 3.0 },
+        "baik": { S: 0.0, T: 0.0, N: 0.0, K: 3.0, M: 0.0 },
+        "maaf": { S: 0.0, T: 0.0, N: 0.0, K: 3.0, M: 0.0 },
+        "damai": { S: 0.0, T: 0.0, N: 0.0, K: 3.0, M: 0.0 },
+        "kerja bakti": { S: 0.0, T: 0.0, N: 0.0, K: 3.0, M: 0.0 },
+        "membersihkan": { S: 0.0, T: 0.0, N: 0.0, K: 3.0, M: 0.0 },
+
+        "berkelahi": { S: 0.0, T: 0.0, N: -1.0, K: -4.0, M: 0.0 },
+        "membolos": { S: 0.0, T: 0.0, N: 0.0, K: -3.0, M: -2.0 },
+        "menyontek": { S: 0.0, T: 0.0, N: -1.0, K: -5.0, M: 0.0 },
+        "pasif": { S: -1.0, T: 0.0, N: -1.0, K: 0.0, M: -2.0 },
+        "mengganggu teman": { S: 0.0, T: 0.0, N: 0.0, K: -3.0, M: -1.0 },
+        "perundungan": { S: 0.0, T: 0.0, N: -1.0, K: -5.0, M: 0.0 },
+        "bully": { S: 0.0, T: 0.0, N: -1.0, K: -5.0, M: 0.0 },
+        "merusak fasilitas": { S: -2.0, T: 0.0, N: 0.0, K: -5.0, M: 0.0 },
+        "terlambat": { S: 0.0, T: 0.0, N: 0.0, K: -2.0, M: -1.0 },
+        "berkata kasar": { S: 0.0, T: 0.0, N: 0.0, K: -4.0, M: 0.0 },
+        "plagiat": { S: -1.0, T: -1.0, N: -2.0, K: -4.0, M: 0.0 },
+        "mencuri": { S: 0.0, T: 0.0, N: 0.0, K: -5.0, M: 0.0 },
+        "membangkang": { S: 0.0, T: 0.0, N: 0.0, K: -4.0, M: -1.0 },
+        "tidur di kelas": { S: 0.0, T: -1.0, N: -1.0, K: -2.0, M: -3.0 },
+        "bermain game": { S: 0.0, T: -1.0, N: 0.0, K: -2.0, M: -3.0 },
+        "gaduh": { S: 0.0, T: 0.0, N: 0.0, K: -3.0, M: -1.0 },
+        "tidak mengerjakan tugas": { S: -1.0, T: -2.0, N: 0.0, K: -3.0, M: -2.0 },
+        "memotong pembicaraan": { S: 0.0, T: 0.0, N: 0.0, K: -2.0, M: 0.0 },
+        "acuh tak acuh": { S: 0.0, T: 0.0, N: -1.0, K: -2.0, M: -3.0 },
+        "melempar tanggung jawab": { S: 0.0, T: 0.0, N: 0.0, K: -4.0, M: 0.0 },
+        "meremehkan": { S: 0.0, T: 0.0, N: 0.0, K: -3.0, M: 0.0 },
+        "malas": { S: -1.0, T: -1.0, N: -1.0, K: -3.0, M: -3.0 },
+        "bandel": { S: 0.0, T: 0.0, N: 0.0, K: -3.0, M: -1.0 },
+        "nakal": { S: 0.0, T: 0.0, N: 0.0, K: -4.0, M: -1.0 },
+        "memukul": { S: 0.0, T: 0.0, N: 0.0, K: -4.0, M: -1.0 },
+        "pukul": { S: 0.0, T: 0.0, N: 0.0, K: -4.0, M: -1.0 },
+        "baku ribut": { S: 0.0, T: 0.0, N: 0.0, K: -3.0, M: 0.0 },
+        "ribut": { S: 0.0, T: 0.0, N: 0.0, K: -3.0, M: 0.0 },
+
+        "kreatif": { S: 3.0, T: 0.0, N: 2.0, K: 0.0, M: 2.0 },
+        "membuat prototipe": { S: 4.0, T: 1.0, N: 2.0, K: 0.0, M: 2.0 },
+        "merangkai alat": { S: 3.0, T: 1.0, N: 1.0, K: 0.0, M: 1.0 },
+        "coding": { S: 3.0, T: 2.0, N: 3.0, K: 0.0, M: 2.0 },
+        "mengoperasikan mesin": { S: 3.0, T: 1.0, N: 0.0, K: 1.0, M: 1.0 },
+        "mendesain": { S: 3.0, T: 0.0, N: 2.0, K: 0.0, M: 2.0 },
+        "mengedit video": { S: 3.0, T: 0.0, N: 1.0, K: 0.0, M: 2.0 },
+        "menari": { S: 3.0, T: 0.0, N: 0.0, K: 1.0, M: 2.0 },
+        "memainkan musik": { S: 3.0, T: 0.0, N: 1.0, K: 0.0, M: 2.0 },
+        "menyolder": { S: 3.0, T: 0.0, N: 0.0, K: 1.0, M: 1.0 },
+        "mengukur presisi": { S: 3.0, T: 1.0, N: 1.0, K: 1.0, M: 0.0 },
+        "membuat kerajinan": { S: 3.0, T: 0.0, N: 1.0, K: 0.0, M: 1.0 },
+        "menggunakan mikroskop": { S: 3.0, T: 1.0, N: 0.0, K: 1.0, M: 1.0 },
+        "praktek lapangan": { S: 3.0, T: 1.0, N: 1.0, K: 1.0, M: 2.0 },
+        "praktek": { S: 3.0, T: 1.0, N: 1.0, K: 0.0, M: 1.0 },
+        "menjahit": { S: 3.0, T: 0.0, N: 0.0, K: 1.0, M: 1.0 },
+        "membuat maket": { S: 3.0, T: 1.0, N: 2.0, K: 1.0, M: 2.0 },
+        "terampil menggunakan alat": { S: 3.0, T: 0.0, N: 0.0, K: 0.0, M: 1.0 },
+        "mengisi jurnal praktikum": { S: 2.0, T: 2.0, N: 1.0, K: 2.0, M: 0.0 },
+        "melakukan eksperimen": { S: 3.0, T: 2.0, N: 2.0, K: 0.0, M: 2.0 },
+        "menggambar teknik": { S: 3.0, T: 1.0, N: 1.0, K: 0.0, M: 1.0 },
+        "mempresentasikan produk": { S: 2.0, T: 1.0, N: 1.0, K: 2.0, M: 1.0 },
+        "bagus": { S: 1.0, T: 1.0, N: 1.0, K: 1.0, M: 1.0 },
+
+        "menjelaskan konsep": { S: 0.0, T: 3.0, N: 2.0, K: 0.0, M: 1.0 },
+        "menghitung": { S: 1.0, T: 3.0, N: 1.0, K: 0.0, M: 0.0 },
+        "memahami rumus": { S: 0.0, T: 3.0, N: 1.0, K: 0.0, M: 0.0 },
+        "menghafal istilah": { S: 0.0, T: 2.0, N: 0.0, K: 0.0, M: 0.0 },
+        "menerjemahkan teks": { S: 1.0, T: 3.0, N: 1.0, K: 0.0, M: 1.0 },
+        "membaca grafik": { S: 0.0, T: 3.0, N: 2.0, K: 0.0, M: 0.0 },
+        "menganalisis tata bahasa": { S: 0.0, T: 3.0, N: 2.0, K: 0.0, M: 0.0 },
+        "mendefinisikan teori": { S: 0.0, T: 3.0, N: 1.0, K: 0.0, M: 0.0 },
+        "mengingat materi": { S: 0.0, T: 2.0, N: 0.0, K: 0.0, M: 0.0 },
+        "menjawab soal sulit": { S: 0.0, T: 3.0, N: 2.0, K: 0.0, M: 1.0 },
+        "menguasai sintaks": { S: 2.0, T: 3.0, N: 1.0, K: 0.0, M: 1.0 },
+        "paham hukum fisika": { S: 0.0, T: 3.0, N: 1.0, K: 0.0, M: 0.0 },
+        "mengidentifikasi struktur": { S: 0.0, T: 3.0, N: 1.0, K: 0.0, M: 0.0 },
+        "merangkum bacaan": { S: 1.0, T: 2.0, N: 1.0, K: 0.0, M: 0.0 },
+        "menguraikan definisi": { S: 0.0, T: 3.0, N: 1.0, K: 0.0, M: 0.0 },
+
+        "bertanya kritis": { S: 0.0, T: 1.0, N: 3.0, K: 0.0, M: 2.0 },
+        "bertanya": { S: 0.0, T: 0.0, N: 1.0, K: 1.0, M: 2.0 },
+        "menemukan solusi": { S: 1.0, T: 1.0, N: 4.0, K: 0.0, M: 1.0 },
+        "menganalisis kesalahan": { S: 1.0, T: 1.0, N: 3.0, K: 0.0, M: 1.0 },
+        "debugging": { S: 2.0, T: 1.0, N: 3.0, K: 0.0, M: 1.0 },
+        "mencari akar masalah": { S: 0.0, T: 1.0, N: 4.0, K: 0.0, M: 1.0 },
+        "menghubungkan konsep": { S: 0.0, T: 2.0, N: 3.0, K: 0.0, M: 1.0 },
+        "membandingkan metode": { S: 0.0, T: 2.0, N: 3.0, K: 0.0, M: 1.0 },
+        "mengevaluasi ide": { S: 0.0, T: 1.0, N: 3.0, K: 0.0, M: 1.0 },
+        "memberi usul inovatif": { S: 1.0, T: 0.0, N: 4.0, K: 0.0, M: 2.0 },
+        "mematahkan argumen": { S: 0.0, T: 1.0, N: 3.0, K: 0.0, M: 1.0 },
+        "menyusun hipotesis": { S: 0.0, T: 2.0, N: 3.0, K: 0.0, M: 1.0 },
+        "menyimpulkan data": { S: 0.0, T: 2.0, N: 3.0, K: 0.0, M: 0.0 },
+        "berpikir sistematis": { S: 1.0, T: 1.0, N: 3.0, K: 0.0, M: 1.0 },
+        "melihat pola": { S: 0.0, T: 2.0, N: 3.0, K: 0.0, M: 1.0 },
+        "mengkritisi data": { S: 0.0, T: 1.0, N: 4.0, K: 0.0, M: 1.0 },
+        "cerdas": { S: 0.0, T: 3.0, N: 3.0, K: 0.0, M: 1.0 },
+        "pintar": { S: 0.0, T: 3.0, N: 3.0, K: 0.0, M: 1.0 },
+
+        "sangat antusias": { S: 0.0, T: 0.0, N: 0.0, K: 1.0, M: 4.0 },
+        "antusias": { S: 0.0, T: 0.0, N: 0.0, K: 1.0, M: 4.0 },
+        "bertanya lebih lanjut": { S: 0.0, T: 1.0, N: 2.0, K: 0.0, M: 3.0 },
+        "membaca referensi tambahan": { S: 0.0, T: 2.0, N: 1.0, K: 0.0, M: 4.0 },
+        "membawa bahan sendiri": { S: 1.0, T: 0.0, N: 0.0, K: 2.0, M: 3.0 },
+        "diskusi di luar jam": { S: 0.0, T: 1.0, N: 1.0, K: 1.0, M: 4.0 },
+        "mengeksplorasi sendiri": { S: 2.0, T: 1.0, N: 2.0, K: 0.0, M: 4.0 },
+        "mencoba tantangan baru": { S: 1.0, T: 0.0, N: 2.0, K: 1.0, M: 4.0 },
+        "fokus tinggi": { S: 1.0, T: 1.0, N: 0.0, K: 2.0, M: 3.0 },
+        "penasaran": { S: 0.0, T: 0.0, N: 1.0, K: 0.0, M: 3.0 },
+        "proaktif": { S: 1.0, T: 0.0, N: 1.0, K: 2.0, M: 3.0 },
+        "inisiatif sendiri": { S: 1.0, T: 0.0, N: 1.0, K: 2.0, M: 4.0 },
+        "senang mencoba": { S: 1.0, T: 0.0, N: 1.0, K: 0.0, M: 3.0 },
+
+        "mampu memimpin proyek kelompok": { S: 2.0, T: 1.0, N: 2.0, K: 4.0, M: 3.0 },
+        "mampu memecahkan masalah rumit": { S: 2.0, T: 2.0, N: 5.0, K: 0.0, M: 2.0 },
+        "berhasil membuat alat kerja": { S: 5.0, T: 1.0, N: 2.0, K: 1.0, M: 2.0 },
+        "aktif berdiskusi dan membantu": { S: 0.0, T: 1.0, N: 2.0, K: 4.0, M: 3.0 },
+        "menolak bekerja sama": { S: 0.0, T: 0.0, N: 0.0, K: -4.0, M: -2.0 },
+        "mengabaikan instruksi guru": { S: -1.0, T: 0.0, N: -1.0, K: -4.0, M: -3.0 },
+        "membantu merapikan laboratorium": { S: 2.0, T: 0.0, N: 0.0, K: 4.0, M: 2.0 },
+        "mampu mengajari teman sekelas": { S: 1.0, T: 3.0, N: 2.0, K: 4.0, M: 2.0 },
+        "kreatif mendesain solusi": { S: 3.0, T: 1.0, N: 4.0, K: 0.0, M: 3.0 },
+        "sering tidak fokus": { S: -1.0, T: -1.0, N: -1.0, K: -1.0, M: -3.0 }
+    };
+
+    function popAlert(type, title) {
+      if (typeof Swal !== 'undefined') {
+        Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, icon: type, title: title });
+      } else { alert(title); }
+    }
+
+    function loadData() {
+      showL("Sinkronisasi Referensi Kelas...");
+      google.script.run
+        .withSuccessHandler(function(res) {
+          DB = res || {};
+          let periodeAktifObj = (DB.MasterPeriode || []).find(p => p.status_aktif === 'AKTIF');
+          idPeriodeAktifGlobal = periodeAktifObj ? periodeAktifObj.id_periode : "";
+          try { initUI(); } catch (err) { console.error("Error UI:", err); }
+          hideL(); 
+        })
+        .withFailureHandler(function(err) {
+          hideL(); popAlert('error', 'Koneksi Server Gagal');
+        })
+        .getMasterReferences();
+    }
+
+    function initUI() {
+      let localDate = new Date();
+      localDate.setMinutes(localDate.getMinutes() - localDate.getTimezoneOffset());
+      document.getElementById('j_tanggal').value = localDate.toISOString().slice(0, 10);
+
+      let optKls = '<option value="">- Pilih Kelas -</option>';
+      let optKlsFilter = '<option value="">- Pilih Kelas untuk Melihat -</option>';
+      
+      if (DB.MasterKelas && DB.MasterKelas.length > 0) {
+        DB.MasterKelas.forEach(function(k) {
+          optKls += '<option value="' + k.id_kelas + '">' + k.nama_kelas + '</option>';
+          optKlsFilter += '<option value="' + k.id_kelas + '">' + k.nama_kelas + '</option>';
+        });
+      }
+      
+      document.getElementById('j_kelas').innerHTML = optKls;
+      document.getElementById('f_kelas').innerHTML = optKlsFilter;
+      document.getElementById('j_siswa').innerHTML = '<option value="">- Pilih Kelas Dulu -</option>';
+      document.getElementById('j_materi').innerHTML = '<option value="">- Pilih Materi / Aktivitas -</option>';
+    }
+
+    function fetchFeedData() {
+       let idKlsFlt = document.getElementById('f_kelas').value;
+       
+       if(!idKlsFlt) {
+          DB.TransJurnal = [];
+          renderFeed();
+          renderJurnalTable();
+          return;
+       }
+
+       showL("Menarik Riwayat Jurnal Kelas...");
+       google.script.run
+         .withSuccessHandler(function(res) {
+             hideL();
+             DB.TransJurnal = res.TransJurnal || []; 
+             renderFeed();
+             renderJurnalTable();
+         })
+         .withFailureHandler(function(err) {
+             hideL(); popAlert('error', 'Gagal memuat riwayat: ' + err.message);
+         })
+         .getTransactionalDataByContext(idKlsFlt, idPeriodeAktifGlobal, false);
+    }
+
+    function updateDropdowns() {
+      let konteks = document.getElementById('j_konteks').value; 
+      let idKls = document.getElementById('j_kelas').value;
+      
+      let optSis = '<option value="">- Siswa -</option>';
+      if (idKls && DB.MasterSiswa) {
+        DB.MasterSiswa.forEach(function(s) {
+          if (String(s.id_kelas) === String(idKls)) optSis += '<option value="' + s.id_siswa + '">' + s.nama_siswa + '</option>';
+        });
+      } else {
+        optSis = '<option value="">- Pilih Kelas Dulu -</option>';
+      }
+      document.getElementById('j_siswa').innerHTML = optSis;
+
+      let optMat = '<option value="">- Pilih Materi / Aktivitas -</option>';
+      
+      if (idKls) {
+        if (konteks === 'KBM' && DB.MasterMateri) {
+          DB.MasterMateri.forEach(function(m) {
+            if (String(m.id_kelas) === String(idKls)) {
+              let labelKategori = "";
+              let katObj = DB.MasterKategoriPenilaian?.find(function(k) { return String(k.id_kategori) === String(m.id_kategori); });
+              if (katObj) labelKategori = " (" + katObj.nama_kategori + ")";
+              optMat += '<option value="' + m.id_materi + '">' + m.nama_materi + labelKategori + '</option>';
+            }
+          });
+        } 
+        else if (konteks === 'OBSERVASI' && DB.MasterMBK) {
+          DB.MasterMBK.forEach(function(mbk) {
+             optMat += '<option value="' + mbk.id_jenis + '">' + mbk.kategori_penilaian + '</option>';
+          });
+        }
+      } else {
+        optMat = '<option value="">- Pilih Kelas Dulu -</option>';
+      }
+      
+      document.getElementById('j_materi').innerHTML = optMat;
+    }
+
+    function handleJurnalSubmit(e) {
+      e.preventDefault();
+      let narasi = document.getElementById('j_narasi').value.trim();
+      let fileInput = document.getElementById('j_file').files[0];
+      let aiMode = document.querySelector('input[name="ai_mode"]:checked').value;
+      let impactMode = document.querySelector('input[name="impact_mode"]:checked').value;
+      let inputTanggal = document.getElementById('j_tanggal').value;
+      
+      let idGuruAktif = cUser.id_guru || "UNKNOWN";
+      let konteks = document.getElementById('j_konteks').value; 
+      let idDropdownTerpilih = document.getElementById('j_materi').value; 
+
+      let finalIdMateri = (konteks === 'KBM') ? idDropdownTerpilih : "";
+      let finalIdJenis = (konteks === 'OBSERVASI') ? idDropdownTerpilih : "";
+
+      let lampiranLama = "";
+      if (editJurnalId) {
+        let dataLama = DB.TransJurnal?.find(x => String(x.id_jurnal) === String(editJurnalId));
+        if (dataLama) lampiranLama = dataLama.lampiran_url || "";
+      }
+      let record = {
+        id_jurnal: editJurnalId || ("JRN-" + new Date().getTime()),
+        tanggal: inputTanggal,
+        id_siswa: document.getElementById('j_siswa').value,
+        id_guru: idGuruAktif,
+        id_jenis: finalIdJenis,
+        id_materi: finalIdMateri,
+        narasi_kejadian: narasi,
+        mode_dampak: impactMode,
+        lampiran_url: lampiranLama,
+        val_S: 0, val_T: 0, val_N: 0, val_K: 0, val_M: 0
+      };
+
+      showL("Menganalisis Perilaku...");
+
+      // PEMBARUAN: Penambahan Pemanggilan Claude AI
+      if (aiMode === 'CLAUDE') {
+        google.script.run
+          .withSuccessHandler(function(res) {
+            if (res.success && res.data) {
+              record.val_S = res.data.S || 0; record.val_T = res.data.T || 0; record.val_N = res.data.N || 0;
+              record.val_K = res.data.K || 0; record.val_M = res.data.M || 0;
+              prosesUploadDanSimpan(record, fileInput);
+            } else {
+              popAlert('warning', 'Peringatan API Claude: ' + res.message + '. Otomatis beralih ke Mode Offline.');
+              prosesHeuristikLokal(record, narasi, fileInput);
+            }
+          })
+          .withFailureHandler(function(err) {
+            popAlert('warning', "Koneksi API Claude Gagal. Beralih ke Mode Lokal.");
+            prosesHeuristikLokal(record, narasi, fileInput);
+          })
+          .analyzeJurnalWithClaude(narasi);
+
+      } else if (aiMode === 'QWEN') {
+        google.script.run
+          .withSuccessHandler(function(res) {
+            if (res.success && res.data) {
+              record.val_S = res.data.S || 0; record.val_T = res.data.T || 0; record.val_N = res.data.N || 0;
+              record.val_K = res.data.K || 0; record.val_M = res.data.M || 0;
+              prosesUploadDanSimpan(record, fileInput);
+            } else {
+              popAlert('warning', 'Peringatan API Qwen: ' + res.message + '. Otomatis beralih ke Mode Offline.');
+              prosesHeuristikLokal(record, narasi, fileInput);
+            }
+          })
+          .withFailureHandler(function(err) {
+            popAlert('warning', "Koneksi API Qwen Gagal. Beralih ke Mode Lokal.");
+            prosesHeuristikLokal(record, narasi, fileInput);
+          })
+          .analyzeJurnalWithQwen(narasi);
+
+      } else if (aiMode === 'DEEPSEEK') { // <-- TAMBAHKAN BLOK INI
+        google.script.run
+          .withSuccessHandler(function(res) {
+          if (res.success && res.data) {
+            record.val_S = res.data.S || 0; record.val_T = res.data.T || 0; record.val_N = res.data.N || 0;
+            record.val_K = res.data.K || 0; record.val_M = res.data.M || 0;
+            prosesUploadDanSimpan(record, fileInput);
+          } else {
+            popAlert('warning', 'Peringatan API DeepSeek: ' + res.message + '. Otomatis beralih ke Mode Offline.');
+            prosesHeuristikLokal(record, narasi, fileInput);
+          }
+        })
+        .withFailureHandler(function(err) {
+          popAlert('warning', "Koneksi API DeepSeek Gagal. Beralih ke Mode Lokal.");
+          prosesHeuristikLokal(record, narasi, fileInput);
+        })
+        .analyzeJurnalWithDeepSeek(narasi); // <-- Panggil fungsi backend yang baru
+      
+      } else if (aiMode === 'GEMINI') {
+        google.script.run
+          .withSuccessHandler(function(res) {
+            if (res.success && res.data) {
+              record.val_S = res.data.S || 0; record.val_T = res.data.T || 0; record.val_N = res.data.N || 0;
+              record.val_K = res.data.K || 0; record.val_M = res.data.M || 0;
+              prosesUploadDanSimpan(record, fileInput);
+            } else {
+              popAlert('warning', 'Peringatan API Gemini: ' + res.message + '. Otomatis beralih ke Mode Offline.');
+              prosesHeuristikLokal(record, narasi, fileInput);
+            }
+          })
+          .withFailureHandler(function(err) {
+            popAlert('warning', "Koneksi API Google Gagal. Beralih ke Mode Lokal.");
+            prosesHeuristikLokal(record, narasi, fileInput);
+          })
+          .analyzeJurnalWithGemini(narasi);
+
+      } else if (aiMode === 'OPENKEY') { // <-- TAMBAHKAN BLOK INI
+        google.script.run
+          .withSuccessHandler(function(res) {
+          if (res.success && res.data) {
+            record.val_S = res.data.S || 0; record.val_T = res.data.T || 0; record.val_N = res.data.N || 0;
+            record.val_K = res.data.K || 0; record.val_M = res.data.M || 0;
+            prosesUploadDanSimpan(record, fileInput);
+          } else {
+            popAlert('warning', 'Peringatan API Openkey: ' + res.message + '. Otomatis beralih ke Mode Offline.');
+            prosesHeuristikLokal(record, narasi, fileInput);
+          }
+        })
+        .withFailureHandler(function(err) {
+          popAlert('warning', "Koneksi API Openkey Gagal. Beralih ke Mode Lokal.");
+          prosesHeuristikLokal(record, narasi, fileInput);
+        })
+        .analyzeJurnalWithOpenkey(narasi); // <-- Panggil fungsi backend yang baru
+      
+      } else {
+        prosesHeuristikLokal(record, narasi, fileInput);
+      }
+    }
+
+    function prosesHeuristikLokal(record, teks, fileInput) {
+      let t = teks.toLowerCase();
+      let pS = 0, pT = 0, pN = 0, pK = 0, pM = 0;
+      for (const [key, score] of Object.entries(HEURISTIK_DICT)) {
+        if (t.includes(key)) { pS += score.S; pT += score.T; pN += score.N; pK += score.K; pM += score.M; }
+      }
+      record.val_S = pS; record.val_T = pT; record.val_N = pN; record.val_K = pK; record.val_M = pM;
+      prosesUploadDanSimpan(record, fileInput);
+    }
+
+    function prosesUploadDanSimpan(record, fileInput) {
+      if (fileInput) {
+        showL("Mengunggah Lampiran...");
+        let reader = new FileReader();
+        reader.onload = function(e) {
+          let content = e.target.result;
+          let base64 = content.split(',')[1]; 
+          google.script.run
+            .withSuccessHandler(function(res) {
+              if (res.success) { 
+                record.lampiran_url = res.url; 
+                simpanKeDatabase(record); 
+              } else { 
+                hideL(); popAlert('error', 'Gagal Unggah: ' + res.message); 
+              }
+            })
+            .withFailureHandler(function(err) { hideL(); popAlert('error', 'Koneksi Putus Saat Upload'); })
+            .uploadFileToDrive(base64, fileInput.name, fileInput.type);
+        };
+        reader.readAsDataURL(fileInput);
+      } else {
+        simpanKeDatabase(record);
+      }
+    }
+
+    function simpanKeDatabase(record) {
+      showL(editJurnalId ? "Memperbarui Jurnal..." : "Menyimpan Jurnal...");
+      if (editJurnalId) record.id_jurnal = editJurnalId; 
+
+      let targetSiswaKelas = document.getElementById('j_kelas').value;
+
+      let runner = google.script.run
+        .withSuccessHandler(function(r) {
+          if (r.success) {
+            document.getElementById('formJurnal').reset();
+            let localDate = new Date();
+            localDate.setMinutes(localDate.getMinutes() - localDate.getTimezoneOffset());
+            document.getElementById('j_tanggal').value = localDate.toISOString().slice(0, 10);
+            
+            let isEditMode = editJurnalId !== null;
+            editJurnalId = null; 
+            
+            let btnSubmit = document.querySelector('#formJurnal button[type="submit"]');
+            if(btnSubmit) {
+               btnSubmit.innerHTML = '<i class="fa-solid fa-paper-plane me-2"></i> Posting Jurnal';
+               btnSubmit.classList.remove('btn-warning');
+               btnSubmit.classList.add('btn-primary');
+            }
+
+            popAlert('success', isEditMode ? 'Jurnal berhasil diperbarui!' : 'Jurnal berhasil diposting!');
+
+            let feedDropdown = document.getElementById('f_kelas');
+            if(feedDropdown) feedDropdown.value = targetSiswaKelas;
+            
+            fetchFeedData(); 
+
+          } else {
+            hideL(); popAlert('error', r.message);
+          }
+        })
+        .withFailureHandler(function(err) { hideL(); popAlert('error', 'Error Menyimpan: ' + err.message); });
+
+      if (editJurnalId) runner.updateJurnalAnekdotal(record);
+      else runner.saveJurnalAnekdotal(record);
+    }
+
+    function renderFeed() {
+      let container = document.getElementById('feedContainer');
+      let idKlsFilter = document.getElementById('f_kelas').value;
+
+      if (!idKlsFilter) {
+         container.innerHTML = '<div class="text-center py-5 text-muted"><i class="fa-solid fa-mug-hot fa-3x mb-3 opacity-25"></i><h5>Pilih Kelas untuk merender riwayat jurnal.</h5></div>';
+         return;
+      }
+
+      if (!DB.TransJurnal || DB.TransJurnal.length === 0) {
+        container.innerHTML = '<div class="text-center py-5 text-muted"><i class="fa-solid fa-mug-hot fa-3x mb-3 opacity-25"></i><h5>Belum ada jurnal observasi untuk kelas ini.</h5></div>';
+        return;
+      }
+
+      let jurnals = DB.TransJurnal.slice().sort((a,b) => new Date(b.tanggal||0) - new Date(a.tanggal||0)); 
+      let html = "";
+      let hasData = false;
+
+      jurnals.forEach(function(j) {
+        let siswa = DB.MasterSiswa?.find(s => String(s.id_siswa) === String(j.id_siswa));
+        if (!siswa) return;
+        
+        hasData = true;
+        let kelasObj = DB.MasterKelas?.find(k => String(k.id_kelas) === String(siswa.id_kelas));
+        let kelasStr = kelasObj ? kelasObj.nama_kelas : "-";
+        
+        let inisial = (siswa.nama_siswa || "S").charAt(0).toUpperCase();
+        let dDate = new Date(j.tanggal);
+        let tgl = isNaN(dDate) ? (j.tanggal || "-") : dDate.toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'});
+        
+        let namaAktivitas = "";
+        if (j.id_materi && String(j.id_materi).trim() !== "") {
+           let matObj = DB.MasterMateri?.find(m => String(m.id_materi) === String(j.id_materi));
+           if(matObj) namaAktivitas = `<span class="badge bg-primary ms-2"><i class="fa-solid fa-book"></i> ${matObj.nama_materi}</span>`;
+        } else if (j.id_jenis && String(j.id_jenis).trim() !== "") {
+           let mbkObj = DB.MasterMBK?.find(m => String(m.id_jenis) === String(j.id_jenis));
+           if(mbkObj) namaAktivitas = `<span class="badge bg-success ms-2"><i class="fa-solid fa-person-running"></i> ${mbkObj.kategori_penilaian}</span>`;
+        }
+
+        let badgeDampak = (j.mode_dampak === 'BONUS') 
+          ? '<span class="badge bg-danger ms-2"><i class="fa-solid fa-bolt"></i> Intervensi</span>' 
+          : '<span class="badge bg-secondary ms-2"><i class="fa-solid fa-eye"></i> Catatan</span>';
+          
+        let lampiranHtml = "";
+        if (j.lampiran_url && j.lampiran_url.length > 5) {
+          let imgSrc = j.lampiran_url;
+          if (imgSrc.includes('drive.google.com/file/d/')) {
+            let fileId = imgSrc.split('/d/')[1].split('/')[0];
+            imgSrc = 'https://drive.google.com/uc?export=view&id=' + fileId;
+          }
+          lampiranHtml = `<div class="mt-3"><a href="${j.lampiran_url}" target="_blank"><img src="${imgSrc}" class="feed-img-attachment border shadow-sm" alt="Lampiran" onerror="this.style.display='none';"></a></div>`;
+        }
+
+        let formatPoin = function(val) {
+          let v = parseFloat(val); if (isNaN(v)) v = 0;
+          if (v > 0) return `<span class="badge badge-stnkm bg-success">+${v}</span>`;
+          if (v < 0) return `<span class="badge badge-stnkm bg-danger">${v}</span>`;
+          return `<span class="badge badge-stnkm bg-light text-muted border">0</span>`;
+        };
+
+        let narasiBersih = (j.narasi_kejadian || "").toString().replace(/\n/g, '<br>');
+
+        html += `<div class="card feed-card p-4">
+            <div class="feed-header">
+              <div class="feed-avatar shadow-sm">${inisial}</div>
+              <div class="feed-meta w-100 d-flex justify-content-between align-items-start">
+                <div>
+                  <h6><a href="#" onclick="window.top.location.href = SCRIPT_URL + '?page=profil&tipe=siswa&id=${j.id_siswa}'" class="text-decoration-none text-dark">${siswa.nama_siswa}</a> ${badgeDampak} ${namaAktivitas}</h6>
+                  <small>${kelasStr} &bull; ${tgl}</small>
+                </div>
+                <div class="btn-group">
+                  <button class="btn btn-sm text-primary shadow-none" onclick="editJurnal('${j.id_jurnal}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
+                  <button class="btn btn-sm text-muted shadow-none" onclick="delJurnal('${j.id_jurnal}', '${(j.lampiran_url || '')}')" title="Hapus"><i class="fa-solid fa-trash-can hover-danger"></i></button>
+                </div>
+              </div>
+            </div>
+            <div class="feed-body">${narasiBersih} ${lampiranHtml}</div>
+            <div class="feed-footer">
+              <div class="d-flex align-items-center">
+                <span class="small fw-bold text-muted me-2"><i class="fa-solid fa-microchip me-1"></i>NLP:</span>
+                ${formatPoin(j.val_S)} <span class="small fw-bold me-2">S</span>
+                ${formatPoin(j.val_T)} <span class="small fw-bold me-2">T</span>
+                ${formatPoin(j.val_N)} <span class="small fw-bold me-2">N</span>
+                ${formatPoin(j.val_K)} <span class="small fw-bold me-2">K</span>
+                ${formatPoin(j.val_M)} <span class="small fw-bold">M</span>
+              </div>
+            </div>
+          </div>`;
+      });
+
+      if (!hasData) container.innerHTML = '<div class="text-center py-5 text-muted"><h5>Belum ada jurnal observasi untuk kelas ini.</h5></div>';
+      else container.innerHTML = html;
+    }
+
+    function handleJurnalSearch(val) { searchJurnalQuery = val.toLowerCase(); currentJurnalPage = 1; renderJurnalTable(); }
+    function sortJurnalTable(col) {
+      if (sortJurnalCol === col) sortJurnalAsc = !sortJurnalAsc;
+      else { sortJurnalCol = col; sortJurnalAsc = true; }
+      renderJurnalTable();
+    }
+    function changeJurnalPage(dir) { currentJurnalPage += dir; renderJurnalTable(); }
+
+    function renderJurnalTable() {
+      let idKlsFlt = document.getElementById('f_kelas').value;
+      let tbody = document.getElementById('jurnalTableBody');
+      let thead = document.getElementById('jurnalThead');
+
+      let cols = [
+        { id: 'tanggal', label: 'Tanggal' },
+        { id: 'siswa', label: 'Nama Siswa' },
+        { id: 'aktivitas', label: 'Aktivitas / Materi' },
+        { id: 'kejadian', label: 'Kejadian / Perilaku' },
+        { id: 'dampak', label: 'Mode' },
+        { id: 'poin', label: 'STNKM' },
+        { id: 'aksi', label: 'Aksi' } 
+      ];
+
+      let thHtml = "<tr>";
+      cols.forEach(c => {
+        let icon = "fa-sort text-muted opacity-50";
+        if (sortJurnalCol === c.id) icon = sortJurnalAsc ? "fa-sort-up text-primary" : "fa-sort-down text-primary";
+        let align = (c.id === 'siswa' || c.id === 'kejadian') ? 'text-start' : 'text-center';
+        
+        if (c.id === 'poin' || c.id === 'aksi') thHtml += `<th class="${align}">${c.label}</th>`; 
+        else thHtml += `<th class="sortable ${align}" onclick="sortJurnalTable('${c.id}')">${c.label} <i class="fa-solid ${icon} ms-1"></i></th>`;
+      });
+      thHtml += "</tr>";
+      thead.innerHTML = thHtml;
+
+      if (!idKlsFlt) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">Pilih Kelas untuk merender tabel.</td></tr>';
+        document.getElementById('pageIndicatorJurnal').innerText = "Halaman 1";
+        document.getElementById('btnPrevJurnal').disabled = true; document.getElementById('btnNextJurnal').disabled = true;
+        return;
+      }
+
+      let dataJurnal = (DB.TransJurnal || []).map(row => {
+        let nSis = DB.MasterSiswa?.find(s => String(s.id_siswa) === String(row.id_siswa))?.nama_siswa || row.id_siswa;
+        
+        let nAkt = "Umum";
+        if (row.id_materi && String(row.id_materi).trim() !== "") {
+           nAkt = DB.MasterMateri?.find(m => String(m.id_materi) === String(row.id_materi))?.nama_materi || row.id_materi;
+        } else if (row.id_jenis && String(row.id_jenis).trim() !== "") {
+           nAkt = DB.MasterMBK?.find(m => String(m.id_jenis) === String(row.id_jenis))?.kategori_penilaian || row.id_jenis;
+        }
+
+        return { ...row, nama_siswa: nSis, nama_aktivitas: nAkt };
+      });
+
+      if(searchJurnalQuery !== "") {
+        dataJurnal = dataJurnal.filter(d => 
+          String(d.nama_siswa).toLowerCase().includes(searchJurnalQuery) ||
+          String(d.nama_aktivitas).toLowerCase().includes(searchJurnalQuery) ||
+          String(d.narasi_kejadian).toLowerCase().includes(searchJurnalQuery) ||
+          String(d.tanggal).toLowerCase().includes(searchJurnalQuery) ||
+          String(d.mode_dampak).toLowerCase().includes(searchJurnalQuery)
+        );
+      }
+
+      dataJurnal.sort((a, b) => {
+        let valA, valB;
+        if (sortJurnalCol === 'tanggal') { valA = new Date(a.tanggal||0); valB = new Date(b.tanggal||0); }
+        else if (sortJurnalCol === 'siswa') { valA = a.nama_siswa; valB = b.nama_siswa; }
+        else if (sortJurnalCol === 'aktivitas') { valA = a.nama_aktivitas; valB = b.nama_aktivitas; }
+        else if (sortJurnalCol === 'kejadian') { valA = a.narasi_kejadian; valB = b.narasi_kejadian; }
+        else if (sortJurnalCol === 'dampak') { valA = a.mode_dampak; valB = b.mode_dampak; }
+
+        if (valA < valB) return sortJurnalAsc ? -1 : 1;
+        if (valA > valB) return sortJurnalAsc ? 1 : -1;
+        return 0;
+      });
+
+      let totalPages = Math.ceil(dataJurnal.length / rowsPerJurnalPage) || 1;
+      if (currentJurnalPage > totalPages) currentJurnalPage = totalPages;
+      if (currentJurnalPage < 1) currentJurnalPage = 1;
+
+      let start = (currentJurnalPage - 1) * rowsPerJurnalPage;
+      let paginated = dataJurnal.slice(start, start + rowsPerJurnalPage);
+
+      let htmlRows = "";
+      paginated.forEach(row => {
+        let badgeDampak = (row.mode_dampak === 'BONUS') ? '<span class="badge bg-danger">Intervensi</span>' : '<span class="badge bg-secondary">Catatan</span>';
+        
+        let sS = parseFloat(row.val_S)||0, sT = parseFloat(row.val_T)||0, sN = parseFloat(row.val_N)||0, sK = parseFloat(row.val_K)||0, sM = parseFloat(row.val_M)||0;
+        let bS = sS===0 ? 'bg-light text-muted' : (sS>0 ? 'bg-success':'bg-danger');
+        let bT = sT===0 ? 'bg-light text-muted' : (sT>0 ? 'bg-success':'bg-danger');
+        let bN = sN===0 ? 'bg-light text-muted' : (sN>0 ? 'bg-success':'bg-danger');
+        let bK = sK===0 ? 'bg-light text-muted' : (sK>0 ? 'bg-success':'bg-danger');
+        let bM = sM===0 ? 'bg-light text-muted' : (sM>0 ? 'bg-success':'bg-danger');
+
+        let stnkmHtml = `
+          <div class="d-flex justify-content-center gap-1">
+            <span class="badge ${bS}" title="Skill">${sS} S</span>
+            <span class="badge ${bT}" title="Teori">${sT} T</span>
+            <span class="badge ${bN}" title="Nalar">${sN} N</span>
+            <span class="badge ${bK}" title="Karakter">${sK} K</span>
+            <span class="badge ${bM}" title="Minat">${sM} M</span>
+          </div>`;
+
+        let narasiPendek = row.narasi_kejadian;
+        if(narasiPendek.length > 50) narasiPendek = narasiPendek.substring(0,50) + "...";
+
+        let actionHtml = `
+          <div class="d-flex justify-content-center gap-1">
+            <button class="btn btn-sm btn-warning" onclick="editJurnal('${row.id_jurnal}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
+            <button class="btn btn-sm btn-danger" onclick="delJurnal('${row.id_jurnal}', '${(row.lampiran_url || '')}')" title="Hapus"><i class="fa-solid fa-trash-can"></i></button>
+          </div>`;
+
+        htmlRows += `<tr>
+          <td class="text-center align-middle">${row.tanggal}</td>
+          <td class="fw-bold text-start text-primary align-middle">${row.nama_siswa}</td>
+          <td class="text-center align-middle"><small class="text-muted fw-bold">${row.nama_aktivitas}</small></td>
+          <td class="text-start fst-italic text-muted align-middle" title="${row.narasi_kejadian}">${narasiPendek}</td>
+          <td class="text-center align-middle">${badgeDampak}</td>
+          <td class="text-center align-middle">${stnkmHtml}</td>
+          <td class="text-center align-middle">${actionHtml}</td>
+        </tr>`;
+      });
+
+      if (paginated.length === 0) htmlRows = `<tr><td colspan="7" class="text-muted py-4">Data tidak ditemukan.</td></tr>`;
+
+      tbody.innerHTML = htmlRows;
+      document.getElementById('pageIndicatorJurnal').innerText = `Halaman ${currentJurnalPage} dari ${totalPages}`;
+      document.getElementById('btnPrevJurnal').disabled = (currentJurnalPage === 1);
+      document.getElementById('btnNextJurnal').disabled = (currentJurnalPage === totalPages);
+    }
+
+    function exportJurnalData(format) {
+      showL("Mempersiapkan Dokumen Ekspor...");
+      let idKls = document.getElementById('f_kelas').value;
+      if (!idKls) { hideL(); return Swal.fire('Perhatian', 'Pilih Kelas terlebih dahulu.', 'warning'); }
+
+      let dataRaw = (DB.TransJurnal || []);
+      if(dataRaw.length === 0) { hideL(); return Swal.fire('Kosong', 'Tidak ada data untuk diekspor.', 'info'); }
+
+      let dataToExport = dataRaw.map(row => {
+        let nSis = DB.MasterSiswa?.find(s => String(s.id_siswa) === String(row.id_siswa))?.nama_siswa || row.id_siswa;
+        
+        let nAkt = "Umum";
+        if (row.id_materi && String(row.id_materi).trim() !== "") {
+           nAkt = DB.MasterMateri?.find(m => String(m.id_materi) === String(row.id_materi))?.nama_materi || row.id_materi;
+        } else if (row.id_jenis && String(row.id_jenis).trim() !== "") {
+           nAkt = DB.MasterMBK?.find(m => String(m.id_jenis) === String(row.id_jenis))?.kategori_penilaian || row.id_jenis;
+        }
+
+        return { ...row, nama_siswa: nSis, nama_aktivitas: nAkt };
+      });
+
+      if(searchJurnalQuery !== "") {
+         dataToExport = dataToExport.filter(d => 
+            String(d.nama_siswa).toLowerCase().includes(searchJurnalQuery) ||
+            String(d.nama_aktivitas).toLowerCase().includes(searchJurnalQuery) ||
+            String(d.narasi_kejadian).toLowerCase().includes(searchJurnalQuery) ||
+            String(d.tanggal).toLowerCase().includes(searchJurnalQuery) ||
+            String(d.mode_dampak).toLowerCase().includes(searchJurnalQuery)
+         );
+      }
+
+      dataToExport.sort((a, b) => {
+        let valA, valB;
+        if (sortJurnalCol === 'tanggal') { valA = new Date(a.tanggal||0); valB = new Date(b.tanggal||0); }
+        else if (sortJurnalCol === 'siswa') { valA = a.nama_siswa; valB = b.nama_siswa; }
+        else if (sortJurnalCol === 'aktivitas') { valA = a.nama_aktivitas; valB = b.nama_aktivitas; }
+        else if (sortJurnalCol === 'kejadian') { valA = a.narasi_kejadian; valB = b.narasi_kejadian; }
+        else if (sortJurnalCol === 'dampak') { valA = a.mode_dampak; valB = b.mode_dampak; }
+        if (valA < valB) return sortJurnalAsc ? -1 : 1;
+        if (valA > valB) return sortJurnalAsc ? 1 : -1;
+        return 0;
+      });
+
+      let sek = (DB.PengaturanSekolah && DB.PengaturanSekolah.length > 0) ? DB.PengaturanSekolah[0] : { nama_sekolah: 'Sekolah', alamat_sekolah: '-', kota: '-', nama_kepsek: 'Kepala Sekolah', nip_kepsek: '-' };
+      let kelasObj = DB.MasterKelas?.find(k => String(k.id_kelas) === String(idKls));
+      let namaKelas = kelasObj ? kelasObj.nama_kelas : "Kelas";
+
+      if(format === 'csv') {
+        hideL();
+        let csvContent = "data:text/csv;charset=utf-8,Tanggal,Nama Siswa,Aktivitas,Perilaku/Kejadian,Mode,Poin STNKM\n";
+        dataToExport.forEach(r => { 
+           let pt = `S:${r.val_S||0} T:${r.val_T||0} N:${r.val_N||0} K:${r.val_K||0} M:${r.val_M||0}`;
+           let nrs = String(r.narasi_kejadian||'').replace(/"/g, '""').replace(/\n/g, ' ');
+           csvContent += `"${r.tanggal}","${r.nama_siswa}","${r.nama_aktivitas}","${nrs}","${r.mode_dampak}","${pt}"\n`; 
+        });
+        let encodedUri = encodeURI(csvContent);
+        let link = document.createElement("a"); link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `Rekap_Jurnal_${namaKelas}_${new Date().getTime()}.csv`);
+        document.body.appendChild(link); link.click(); document.body.removeChild(link);
+      } 
+      else if (format === 'pdf') {
+         let printWin = window.open('', '', 'width=1024,height=768');
+         let today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+         
+         let html = `<html><head><title>Laporan Jurnal Kelas</title>
+           <style> 
+             @page { size: landscape; margin: 15mm; }
+             body { font-family: 'Times New Roman', Times, serif; color: #000; font-size: 12px; }
+             table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+             th, td { border: 1px solid #000; padding: 6px 8px; text-align: left; vertical-align: top;}
+             .header-col { background-color: #f0f0f0; text-align: center; font-weight: bold; }
+             .kop-surat-container { background-color: #fff; border: none; padding: 0 0 20px 0; }
+             .kop-surat { text-align: center; border-bottom: 3px solid #000; padding-bottom: 10px; }
+             .kop-surat h3 { margin: 0; font-size: 20px; text-transform: uppercase; }
+             .kop-surat p { margin: 5px 0 0 0; font-size: 14px; font-weight: normal; }
+             .ttd-box { width: 250px; float: right; text-align: center; margin-top: 30px; font-size: 14px;}
+             thead { display: table-header-group; }
+             tfoot { display: table-footer-group; }
+             tr { page-break-inside: avoid; }
+           </style></head><body>
+           
+           <table>
+             <thead>
+               <tr>
+                 <th colspan="7" class="kop-surat-container">
+                   <div class="kop-surat">
+                     <h3>LAPORAN JURNAL OBSERVASI KELAS</h3>
+                     <p>${sek.nama_sekolah} | ${sek.alamat_sekolah}</p>
+                     <p style="margin-top:5px; font-size:13px;"><strong>Kelas: ${namaKelas}</strong></p>
+                   </div>
+                 </th>
+               </tr>
+               <tr>
+                 <th class="header-col" width="3%">No</th>
+                 <th class="header-col" width="10%">Tanggal</th>
+                 <th class="header-col" width="17%">Nama Siswa</th>
+                 <th class="header-col" width="15%">Aktivitas</th>
+                 <th class="header-col" width="35%">Narasi Kejadian</th>
+                 <th class="header-col" width="7%">Dampak</th>
+                 <th class="header-col" width="13%">Poin STNKM</th>
+               </tr>
+             </thead>
+             <tbody>`;
+             
+         dataToExport.forEach((r, idx) => { 
+           let pt = `S:${r.val_S||0} T:${r.val_T||0} N:${r.val_N||0} K:${r.val_K||0} M:${r.val_M||0}`;
+           let nrs = String(r.narasi_kejadian||'').replace(/\n/g, '<br>');
+           html += `<tr>
+                     <td style="text-align:center;">${idx+1}</td>
+                     <td style="text-align:center;">${r.tanggal}</td>
+                     <td style="font-weight:bold;">${r.nama_siswa}</td>
+                     <td style="text-align:center; font-size:11px;">${r.nama_aktivitas}</td>
+                     <td style="font-style:italic;">${nrs}</td>
+                     <td style="text-align:center;">${r.mode_dampak}</td>
+                     <td style="text-align:center; font-size:11px;">${pt}</td>
+                   </tr>`; 
+         });
+         
+         html += `
+             </tbody>
+             <tfoot>
+               <tr>
+                 <td colspan="7" style="border: none; padding: 0;">
+                   <div class="ttd-box">
+                     ${sek.kota}, ${today}<br>Kepala Sekolah<br><br><br><br><br>
+                     <strong>${sek.nama_kepsek}</strong><br>NIP. ${sek.nip_kepsek}
+                   </div>
+                 </td>
+               </tr>
+             </tfoot>
+           </table>
+           </body></html>`;
+           
+         hideL();
+         printWin.document.write(html); 
+         printWin.document.close(); 
+         printWin.focus();
+         setTimeout(() => { printWin.print(); printWin.close(); }, 800); 
+      }
+    }
+
+    function editJurnal(id) {
+      let j = DB.TransJurnal.find(function(x) { return String(x.id_jurnal) === String(id); });
+      if(!j) return;
+      let siswa = DB.MasterSiswa.find(function(s) { return String(s.id_siswa) === String(j.id_siswa); });
+      if(siswa) {
+        document.getElementById('j_kelas').value = siswa.id_kelas;
+        if (j.id_materi && String(j.id_materi).trim() !== "") {
+           document.getElementById('j_konteks').value = 'KBM';
+        } else {
+           document.getElementById('j_konteks').value = 'OBSERVASI';
+        }
+        let tglVal = j.tanggal || "";
+        if (tglVal.includes('/')) {
+          let parts = tglVal.split('/');
+          if (parts.length === 3) tglVal = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        } else if (tglVal.includes('T')) {
+          tglVal = tglVal.split('T')[0];
+        }
+        document.getElementById('j_tanggal').value = tglVal;
+        updateDropdowns(); 
+        setTimeout(function() {
+          document.getElementById('j_siswa').value = j.id_siswa;
+          document.getElementById('j_materi').value = (j.id_materi && String(j.id_materi).trim() !== "") ? j.id_materi : j.id_jenis;
+        }, 300); 
+      }
+      document.getElementById('j_narasi').value = j.narasi_kejadian;
+      document.querySelector('input[name="impact_mode"][value="' + j.mode_dampak + '"]').checked = true;
+      editJurnalId = id; 
+      let btnSubmit = document.querySelector('#formJurnal button[type="submit"]');
+      if(btnSubmit) {
+        btnSubmit.innerHTML = '<i class="fa-solid fa-pen-to-square me-2"></i> Perbarui & Analisis Ulang';
+        btnSubmit.classList.replace('btn-primary', 'btn-warning');
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function delJurnal(id, lampiranUrl) {
+      if (typeof Swal !== 'undefined') {
+        Swal.fire({ title: 'Hapus Permanen?', text: "Jurnal dan lampiran file di Drive akan ikut terhapus.", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Ya, Hapus' }).then(function(result) {
+          if (result.isConfirmed) {
+            showL("Menghapus Data...");
+            google.script.run
+              .withSuccessHandler(function() { fetchFeedData(); popAlert('success', 'Jurnal Dihapus'); })
+              .withFailureHandler(function(err) { hideL(); popAlert('error', err.message); })
+              .deleteJurnalDanLampiran(id, lampiranUrl); 
+          }
+        });
+      }
+    }
+  </script>
+</body>
+
+</html>

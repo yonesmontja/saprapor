@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Catatan Proses P5 - EduRapor</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #f4f6f9;
+      font-family: sans-serif;
+    }
+
+    #loadingOverlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.95);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    textarea.form-control {
+      border: 1px solid #0ea5e9;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.075);
+    }
+
+    textarea.form-control:focus {
+      border-color: #1a365d;
+      box-shadow: 0 0 0 0.25rem rgba(26, 54, 93, 0.25);
+    }
+
+    .sortable { cursor: pointer; user-select: none; transition: background-color 0.2s; white-space: nowrap; }
+    .sortable:hover { background-color: #343a40 !important; color: #fff; } 
+  </style>
+</head>
+
+<body>
+
+  <div id="loadingOverlay">
+    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div>
+    <h5 class="mt-3 text-muted" id="loadingText">Menyiapkan Modul P5...</h5>
+  </div>
+
+  <script>
+    const SCRIPT_URL = "<?= scriptUrl ?>";
+  </script>
+  <?!= include('navbar'); ?>
+
+  <div class="container mt-4 mb-5">
+    <h3 class="mb-4 text-primary fw-bold"><i class="fa-solid fa-clipboard-list"></i> Input Catatan Proses P5</h3>
+
+    <div class="card p-4 shadow-sm mb-4 border-top border-primary border-4">
+
+      <div class="row mb-4 bg-light p-3 rounded border shadow-sm">
+        <div class="col-md-4 mb-3 mb-md-0">
+          <label class="fw-bold text-primary">Periode Aktif</label>
+          <select class="form-select border-primary" id="p_periode" onchange="onFilterChange()"></select>
+        </div>
+        <div class="col-md-4 mb-3 mb-md-0">
+          <label class="fw-bold text-primary">Pilih Kelas</label>
+          <select class="form-select border-primary" id="p_kelas" onchange="onFilterChange()"></select>
+        </div>
+        <div class="col-md-4">
+          <label class="fw-bold text-primary">Pilih Judul Proyek P5</label>
+          <select class="form-select border-primary" id="p_proyek" onchange="triggerProyekRender()"></select>
+        </div>
+      </div>
+
+      <form onsubmit="handleCatatanP5Submit(event)" id="formCatatanList" class="d-none">
+
+        <div class="alert alert-info border-info mb-4 d-flex flex-column flex-md-row justify-content-between align-items-start gap-3" id="infoProyekCard">
+           <div id="teksInfoProyek"></div>
+           
+           <!-- PEMBARUAN: Pemilihan Model AI (Penambahan Claude) -->
+           <div class="bg-white p-2 rounded shadow-sm border border-info" style="min-width: 250px;">
+             <span class="fw-bold small text-secondary d-block mb-1">Mesin AI Pemoles:</span>
+             <div class="form-check">
+               <input class="form-check-input" type="radio" name="ai_mode_p5" id="ai_claude_p5" value="CLAUDE" checked>
+               <label class="form-check-label small fw-bold text-dark" for="ai_claude_p5">Claude 3.5 Sonnet</label>
+             </div>
+             <div class="form-check">
+               <input class="form-check-input" type="radio" name="ai_mode_p5" id="ai_qwen_p5" value="QWEN">
+               <label class="form-check-label small fw-bold text-dark" for="ai_qwen_p5">Qwen 2.5-72B</label>
+             </div>
+             <div class="form-check">
+               <input class="form-check-input" type="radio" name="ai_mode_p5" id="ai_gemini_p5" value="GEMINI">
+               <label class="form-check-label small fw-bold text-dark" for="ai_gemini_p5">Google Gemini</label>
+             </div>
+           </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-hover align-middle border">
+            <thead class="table-dark">
+              <tr>
+                <th width="5%" class="text-center">No</th>
+                <th width="20%">Nama Siswa</th>
+                <th width="75%" class="text-center">Narasi Catatan Proses (Kualitatif)</th>
+              </tr>
+            </thead>
+            <tbody id="catatanBatchBody"></tbody>
+          </table>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mt-3">
+          <small class="text-muted"><i class="fa-solid fa-circle-info"></i> Kosongkan catatan untuk siswa yang tidak dinilai.</small>
+          <button type="submit" class="btn btn-lg btn-success shadow-sm" id="btnSubmitCatatan"><i class="fa-solid fa-save"></i> Simpan Semua Catatan</button>
+        </div>
+      </form>
+
+      <div id="catatanEmptyMsg" class="text-center text-muted mt-3 py-4">
+        <i class="fa-solid fa-clipboard-question fa-3x mb-3 opacity-50"></i>
+        <h5>Pilih Kelas dan Proyek untuk mulai mengisi catatan P5 siswa.</h5>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="container mt-4 mb-5">
+    <h3 class="mb-4 text-primary fw-bold"><i class="fa-solid fa-clipboard-list"></i> Hitung Nilai P5</h3>
+    <div class="card p-4 shadow-sm mb-4 border-top border-primary border-4">
+      <div class="alert alert-info border-0 shadow-sm d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
+        <div class="mb-3 mb-md-0">
+          <h6 class="fw-bold mb-1"><i class="fa-solid fa-robot text-primary me-2"></i>Asisten AI EduRapor</h6>
+          <small class="text-muted">Ekstrak otomatis poin Karakter & Skill dari nilai harian akademik menjadi predikat P5.</small>
+        </div>
+        <button class="btn btn-primary shadow-sm fw-bold text-nowrap" onclick="jalankanAutoP5()">
+          <i class="fa-solid fa-wand-magic-sparkles me-2"></i> Ekstrak Nilai P5
+        </button>
+      </div>
+
+      <div class="row mb-3 align-items-center">
+        <div class="col-md-6 mb-2">
+          <div class="input-group input-group-sm">
+            <span class="input-group-text bg-white text-primary border-primary"><i class="fa-solid fa-magnifying-glass"></i></span>
+            <input type="text" class="form-control border-primary" id="searchP5Input" placeholder="Cari nama siswa, dimensi, atau predikat..." oninput="handleP5Search(this.value)">
+          </div>
+        </div>
+        <div class="col-md-6 mb-2 text-md-end">
+          <button class="btn btn-sm btn-outline-success fw-bold me-2" onclick="exportP5Data('csv')"><i class="fa-solid fa-file-csv"></i> Ekspor CSV</button>
+          <button class="btn btn-sm btn-outline-danger fw-bold" onclick="exportP5Data('pdf')"><i class="fa-solid fa-file-pdf"></i> Cetak PDF</button>
+        </div>
+      </div>
+
+      <div class="card shadow-sm border-0 mt-2">
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover table-striped table-bordered align-middle m-0">
+              <thead class="table-dark" id="p5Thead">
+              </thead>
+              <tbody id="hasilP5Body">
+                <tr>
+                  <td colspan="5" class="text-center text-muted py-4">
+                    <i class="fa-solid fa-wand-magic-sparkles fa-2x mb-2 opacity-50"></i><br>
+                    Pilih Proyek, lalu klik tombol <b>Ekstrak Nilai P5</b> untuk memunculkan hasil.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center mt-3">
+        <button class="btn btn-sm btn-outline-primary" id="btnPrevP5" onclick="changeP5Page(-1)"><i class="fa-solid fa-chevron-left"></i> Sebelumnya</button>
+        <span id="pageIndicatorP5" class="text-muted fw-bold">Halaman 1</span>
+        <button class="btn btn-sm btn-outline-primary" id="btnNextP5" onclick="changeP5Page(1)">Selanjutnya <i class="fa-solid fa-chevron-right"></i></button>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <script>
+    let failsafeTimer = setTimeout(() => {
+      let loader = document.getElementById('loadingOverlay');
+      if (loader) loader.style.display = 'none';
+    }, 5000);
+
+    try {
+      let cUser = JSON.parse(sessionStorage.getItem('eduUser'));
+      if (!cUser || !cUser.name) {
+        window.top.location.href = SCRIPT_URL + "?page=login";
+      } else {
+        if (cUser.role === 'siswa') window.top.location.href = SCRIPT_URL + "?page=dashboard";
+        loadData(); 
+      }
+    } catch (fatalError) {
+      document.getElementById('loadingOverlay').style.display = 'none';
+      Swal.fire('Error Sesi', 'Sesi tidak valid. Harap login ulang.', 'error');
+    }
+
+    const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 });
+    
+    let DB = {};
+    let currentBatchData = [];
+    let currentContext = { kelas: "", periode: "" };
+
+    let searchP5Query = "";
+    let currentP5Page = 1;
+    let sortP5Col = "siswa";
+    let sortP5Asc = true;
+    const rowsPerP5Page = 10;
+    
+    let appState = JSON.parse(sessionStorage.getItem('eduAppState')) || {};
+    function saveState(k, v) { appState[k] = v; sessionStorage.setItem('eduAppState', JSON.stringify(appState)); }
+
+    function showL(t="Memproses...") { document.getElementById('loadingText').innerText = t; document.getElementById('loadingOverlay').style.display = 'flex'; }
+    function hideL() { document.getElementById('loadingOverlay').style.display = 'none'; }
+
+    function loadData() {
+      showL("Memuat Data Referensi...");
+      google.script.run
+        .withSuccessHandler(res => { 
+          clearTimeout(failsafeTimer);
+          DB = res || {}; 
+          initUI(); 
+          hideL(); 
+        })
+        .withFailureHandler(err => { hideL(); Swal.fire('Error Database', err.message, 'error'); })
+        .getMasterReferences();
+    }
+
+    function initUI() {
+      let optPeriode = '<option value="">- Pilih Periode -</option>';
+      let idPeriodeAktif = '';
+      
+      (DB.MasterPeriode || []).forEach(p => {
+        let sel = '';
+        if (p.status_aktif === 'AKTIF') {
+          sel = 'selected';
+          idPeriodeAktif = p.id_periode;
+        }
+        optPeriode += `<option value="${p.id_periode}" ${sel}>${p.tahun_ajaran} - Semester ${p.semester}</option>`;
+      });
+      
+      let elPeriode = document.getElementById('p_periode');
+      elPeriode.innerHTML = optPeriode;
+      if (idPeriodeAktif) elPeriode.value = idPeriodeAktif;
+
+      let htmlKls = '<option value="">- Pilih Kelas -</option>';
+      (DB.MasterKelas || []).forEach(k => htmlKls += `<option value="${k.id_kelas}">${k.nama_kelas}</option>`);
+      document.getElementById('p_kelas').innerHTML = htmlKls;
+      
+      if(appState.kelas_p5) document.getElementById('p_kelas').value = appState.kelas_p5;
+      
+      onFilterChange(); 
+    }
+
+    function onFilterChange() {
+      let idKls = document.getElementById('p_kelas').value;
+      let idPer = document.getElementById('p_periode').value;
+
+      if(idKls) saveState('kelas_p5', idKls);
+
+      if (idKls && idPer) {
+        if (currentContext.kelas !== idKls || currentContext.periode !== idPer) {
+           showL("Menarik Data P5 Kelas...");
+           google.script.run
+             .withSuccessHandler(res => {
+                DB = res || {}; 
+                currentContext = { kelas: idKls, periode: idPer };
+                hideL();
+                updateProyekOptions();
+             })
+             .withFailureHandler(err => { hideL(); Swal.fire('Error Jaringan', err.message, 'error'); })
+             .getTransactionalDataByContext(idKls, idPer, true); 
+           return; 
+        }
+      } else {
+        DB.TransCatatanP5 = []; 
+        DB.TransNilaiP5 = [];
+        currentContext = { kelas: "", periode: "" };
+      }
+      updateProyekOptions();
+    }
+
+    function refreshContextData() {
+       currentContext = { kelas: "", periode: "" }; 
+       onFilterChange();
+    }
+
+    function updateProyekOptions() {
+      let idKls = document.getElementById('p_kelas').value;
+      let elProyek = document.getElementById('p_proyek');
+      let htmlProyek = '<option value="">- Pilih Proyek -</option>';
+      
+      let proyekTersedia = (DB.MasterProyek || []).filter(p => String(p.id_kelas) === String(idKls));
+      proyekTersedia.forEach(p => htmlProyek += `<option value="${p.id_proyek}">${p.judul_proyek} (Fase ${p.fase})</option>`);
+      
+      elProyek.innerHTML = htmlProyek;
+      if(appState.proyek_p5 && proyekTersedia.some(p => p.id_proyek === appState.proyek_p5)) {
+        elProyek.value = appState.proyek_p5;
+        triggerProyekRender();
+      } else {
+        document.getElementById('formCatatanList').classList.add('d-none');
+        document.getElementById('catatanEmptyMsg').classList.remove('d-none');
+        document.getElementById('hasilP5Body').innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4"><i class="fa-solid fa-wand-magic-sparkles fa-2x mb-2 opacity-50"></i><br>Pilih Proyek, lalu klik tombol <b>Ekstrak Nilai P5</b> untuk memunculkan hasil.</td></tr>';
+        document.getElementById('p5Thead').innerHTML = `<tr><th width="5%" class="text-center">No</th><th width="25%">Nama Siswa</th><th width="40%">Dimensi Target P5</th><th width="15%" class="text-center">Skor STNKM</th><th width="15%" class="text-center">Predikat</th></tr>`;
+      }
+    }
+
+    function triggerProyekRender() {
+      let idProyek = document.getElementById('p_proyek').value;
+      if(idProyek) saveState('proyek_p5', idProyek);
+      currentP5Page = 1; 
+      generateCatatanList();
+      renderTabelP5();
+    }
+
+    function generateCatatanList() {
+      let idKls = document.getElementById('p_kelas').value;
+      let idProyek = document.getElementById('p_proyek').value;
+      
+      let formList = document.getElementById('formCatatanList');
+      let emptyMsg = document.getElementById('catatanEmptyMsg');
+      
+      if(!idKls || !idProyek) {
+        formList.classList.add('d-none'); emptyMsg.classList.remove('d-none'); return;
+      }
+
+      let proyekData = DB.MasterProyek.find(p => p.id_proyek === idProyek);
+      document.getElementById('teksInfoProyek').innerHTML = `<strong>Deskripsi Proyek:</strong><br> ${proyekData.deskripsi_proyek || '<em>Tidak ada deskripsi.</em>'}`;
+
+      let siswaKelas = (DB.MasterSiswa || []).filter(s => String(s.id_kelas) === String(idKls));
+      if(siswaKelas.length === 0) {
+        emptyMsg.innerHTML = "<h5>Tidak ada siswa di kelas ini.</h5>";
+        formList.classList.add('d-none'); emptyMsg.classList.remove('d-none'); return;
+      }
+
+      let tbody = "";
+      currentBatchData = [];
+      let riwayatCatatan = (DB.TransCatatanP5 || []).filter(c => String(c.id_proyek) === String(idProyek));
+
+      siswaKelas.forEach((s, index) => {
+        let rekamLama = riwayatCatatan.find(c => String(c.id_siswa) === String(s.id_siswa));
+        let teksCatatan = rekamLama ? rekamLama.catatan_proses : ''; 
+        let idCatatan = rekamLama ? rekamLama.id_catatan_p5 : '';
+        
+        currentBatchData.push({ id_siswa: s.id_siswa, id_catatan_p5: idCatatan });
+
+        let linkProfil = `<a href="#" onclick="window.top.location.href = SCRIPT_URL + '?page=profil&tipe=siswa&id=${s.id_siswa}'" class="fw-bold text-decoration-none text-primary">${s.nama_siswa}</a>`;
+
+        tbody += `<tr>
+          <td class="text-center fw-bold">${index + 1}</td>
+          <td class="text-start">${linkProfil}</td>
+          <td class="text-center">
+            <div class="d-flex align-items-start gap-2">
+              <textarea class="form-control bg-light" id="catatan_${s.id_siswa}" rows="3" placeholder="Ketik kata kunci kasar, lalu klik tombol sihir di sebelah kanan agar AI merapikannya menjadi bahasa Rapor." style="resize: vertical;">${teksCatatan}</textarea>
+              <button type="button" class="btn btn-outline-info shadow-sm d-flex flex-column align-items-center justify-content-center" style="height: 74px; min-width: 50px;" onclick="generateAIForStudent('${s.id_siswa}')" title="Sihir AI: Perbaiki Bahasa / Buat Otomatis" id="btn_ai_${s.id_siswa}">
+                <i class="fa-solid fa-wand-magic-sparkles" id="icon_ai_${s.id_siswa}"></i>
+                <span class="spinner-border spinner-border-sm d-none" id="spin_ai_${s.id_siswa}"></span>
+              </button>
+            </div>
+          </td>
+        </tr>`;
+      });
+      
+      document.getElementById('catatanBatchBody').innerHTML = tbody;
+      formList.classList.remove('d-none'); emptyMsg.classList.add('d-none');
+    }
+
+    function generateAIForStudent(idSiswa) {
+      let idProyek = document.getElementById('p_proyek').value;
+      let idPer = document.getElementById('p_periode').value;
+      let aiModePilihan = document.querySelector('input[name="ai_mode_p5"]:checked').value;
+      
+      let txtArea = document.getElementById(`catatan_${idSiswa}`);
+      let btn = document.getElementById(`btn_ai_${idSiswa}`);
+      let icon = document.getElementById(`icon_ai_${idSiswa}`);
+      let spin = document.getElementById(`spin_ai_${idSiswa}`);
+      
+      let drafKasar = txtArea.value.trim();
+
+      btn.disabled = true;
+      icon.classList.add('d-none');
+      spin.classList.remove('d-none');
+
+      google.script.run
+        .withSuccessHandler(res => {
+           btn.disabled = false;
+           spin.classList.add('d-none');
+           icon.classList.remove('d-none');
+           
+           if(res.success) {
+              txtArea.value = res.data;
+              Toast.fire({icon: 'success', title: 'Catatan disihir oleh AI!'});
+           } else {
+              Swal.fire('Perhatian', res.message, 'warning');
+           }
+        })
+        .withFailureHandler(err => {
+           btn.disabled = false;
+           spin.classList.add('d-none');
+           icon.classList.remove('d-none');
+           Swal.fire('Error API', err.message, 'error');
+        })
+        .generateCatatanP5_AI(idSiswa, idProyek, idPer, drafKasar, aiModePilihan);
+    }
+
+    function handleCatatanP5Submit(e) {
+      e.preventDefault(); 
+      showL("Menyimpan Catatan Proyek...");
+      let idProyek = document.getElementById('p_proyek').value;
+      
+      let recordsToSave = currentBatchData.map(item => {
+        let teksInput = document.getElementById(`catatan_${item.id_siswa}`).value;
+        return {
+          id_catatan_p5: item.id_catatan_p5,
+          id_siswa: item.id_siswa,
+          id_proyek: idProyek,
+          catatan_proses: teksInput
+        };
+      });
+
+      google.script.run
+        .withSuccessHandler(r => { 
+          if(r.success) { 
+            refreshContextData(); 
+            Toast.fire({icon:'success',title:r.message}); 
+          } else { 
+            hideL(); Swal.fire('Gagal', r.message, 'error'); 
+          } 
+        })
+        .withFailureHandler(err => { hideL(); Swal.fire('Error Sistem', err.message, 'error'); })
+        .saveCatatanP5Batch(recordsToSave);
+    }
+
+    function handleP5Search(val) { searchP5Query = val.toLowerCase(); currentP5Page = 1; renderTabelP5(); }
+    
+    function sortP5Table(col) {
+      if (sortP5Col === col) sortP5Asc = !sortP5Asc;
+      else { sortP5Col = col; sortP5Asc = true; }
+      renderTabelP5();
+    }
+
+    function changeP5Page(dir) { currentP5Page += dir; renderTabelP5(); }
+
+    function renderTabelP5() {
+      let idKls = document.getElementById('p_kelas').value;
+      let idProyek = document.getElementById('p_proyek').value;
+      let tbody = document.getElementById('hasilP5Body');
+      let thead = document.getElementById('p5Thead');
+
+      let cols = [
+        { id: 'no', label: 'No', sortable: false },
+        { id: 'siswa', label: 'Nama Siswa', sortable: true },
+        { id: 'target', label: 'Dimensi Target P5', sortable: true },
+        { id: 'skor', label: 'Skor STNKM', sortable: true },
+        { id: 'predikat', label: 'Predikat', sortable: true }
+      ];
+
+      let thHtml = "<tr>";
+      cols.forEach(c => {
+        if(c.sortable) {
+          let icon = "fa-sort text-muted opacity-50";
+          if (sortP5Col === c.id) icon = sortP5Asc ? "fa-sort-up text-white" : "fa-sort-down text-white";
+          let align = (c.id === 'siswa' || c.id === 'target') ? 'text-start' : 'text-center';
+          thHtml += `<th class="sortable ${align}" onclick="sortP5Table('${c.id}')">${c.label} <i class="fa-solid ${icon} ms-1"></i></th>`;
+        } else {
+          thHtml += `<th class="text-center" width="5%">${c.label}</th>`;
+        }
+      });
+      thHtml += "</tr>";
+      thead.innerHTML = thHtml;
+
+      if (!idKls || !idProyek) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Pilih Periode, Kelas, dan Proyek terlebih dahulu.</td></tr>';
+        document.getElementById('pageIndicatorP5').innerText = "Halaman 1";
+        document.getElementById('btnPrevP5').disabled = true;
+        document.getElementById('btnNextP5').disabled = true;
+        return;
+      }
+
+      let dataP5Raw = (DB.TransNilaiP5 || []).filter(d => String(d.id_kelas) === String(idKls) && String(d.id_proyek) === String(idProyek));
+
+      if (dataP5Raw.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4"><i class="fa-solid fa-wand-magic-sparkles fa-2x mb-2 opacity-50"></i><br>Belum ada data. Silakan klik tombol <b>Ekstrak Nilai P5</b>.</td></tr>';
+        document.getElementById('pageIndicatorP5').innerText = "Halaman 1";
+        return;
+      }
+
+      let dataP5 = dataP5Raw.map(row => {
+        let namaSiswa = DB.MasterSiswa?.find(s => String(s.id_siswa) === String(row.id_siswa))?.nama_siswa || row.id_siswa;
+        let targetObj = DB.MasterTargetP5?.find(t => String(t.id_target) === String(row.id_target));
+        let namaTarget = targetObj ? `${targetObj.dimensi} - ${targetObj.elemen || ''}` : row.id_target;
+        return { ...row, nama_siswa: namaSiswa, nama_target: namaTarget };
+      });
+
+      if(searchP5Query !== "") {
+        dataP5 = dataP5.filter(d => 
+          d.nama_siswa.toLowerCase().includes(searchP5Query) ||
+          d.nama_target.toLowerCase().includes(searchP5Query) ||
+          d.predikat.toLowerCase().includes(searchP5Query) ||
+          String(d.skor_rata2).includes(searchP5Query)
+        );
+      }
+
+      dataP5.sort((a, b) => {
+        let valA, valB;
+        if (sortP5Col === 'siswa') { valA = a.nama_siswa; valB = b.nama_siswa; }
+        else if (sortP5Col === 'target') { valA = a.nama_target; valB = b.nama_target; }
+        else if (sortP5Col === 'skor') { valA = Number(a.skor_rata2); valB = Number(b.skor_rata2); }
+        else if (sortP5Col === 'predikat') { valA = a.predikat; valB = b.predikat; }
+
+        if (valA < valB) return sortP5Asc ? -1 : 1;
+        if (valA > valB) return sortP5Asc ? 1 : -1;
+        return 0;
+      });
+
+      let totalPages = Math.ceil(dataP5.length / rowsPerP5Page) || 1;
+      if (currentP5Page > totalPages) currentP5Page = totalPages;
+      if (currentP5Page < 1) currentP5Page = 1;
+
+      let start = (currentP5Page - 1) * rowsPerP5Page;
+      let paginated = dataP5.slice(start, start + rowsPerP5Page);
+
+      let htmlRows = "";
+      let no = start + 1;
+
+      paginated.forEach(row => {
+        let badgeColor = row.predikat === 'SB' ? 'bg-success' : row.predikat === 'BSH' ? 'bg-primary' : row.predikat === 'MB' ? 'bg-warning text-dark' : 'bg-danger';
+
+        htmlRows += `<tr>
+          <td class="text-center">${no++}</td>
+          <td class="fw-bold text-start">${row.nama_siswa}</td>
+          <td class="text-start"><small>${row.nama_target}</small></td>
+          <td class="text-center fw-bold text-secondary">${row.skor_rata2}</td>
+          <td class="text-center"><span class="badge ${badgeColor}">${row.predikat}</span></td>
+        </tr>`;
+      });
+
+      if (paginated.length === 0) {
+        htmlRows = `<tr><td colspan="5" class="text-muted py-4">Pencarian tidak menemukan hasil.</td></tr>`;
+      }
+
+      tbody.innerHTML = htmlRows;
+      document.getElementById('pageIndicatorP5').innerText = `Halaman ${currentP5Page} dari ${totalPages}`;
+      document.getElementById('btnPrevP5').disabled = (currentP5Page === 1);
+      document.getElementById('btnNextP5').disabled = (currentP5Page === totalPages);
+    }
+
+    function jalankanAutoP5() {
+      let idPeriode = document.getElementById('p_periode') ? document.getElementById('p_periode').value : "";
+      let idKelas = document.getElementById('p_kelas') ? document.getElementById('p_kelas').value : "";
+      let idProyek = document.getElementById('p_proyek') ? document.getElementById('p_proyek').value : "";
+
+      if (!idPeriode || !idKelas || !idProyek) {
+        Swal.fire('Perhatian', 'Mohon pilih Periode, Kelas, dan Proyek terlebih dahulu sebelum menjalankan asisten ekstraksi.', 'warning');
+        return;
+      }
+
+      Swal.fire({
+        title: 'Jalankan Ekstraksi STNKM?',
+        text: "Sistem akan mengekstrak ribuan titik data nilai harian siswa menjadi predikat P5 secara otomatis.",
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#3f51b5',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Ya, Ekstrak Sekarang!',
+        cancelButtonText: 'Batal'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          showL("Mengekstrak DNA Kompetensi Siswa... Mohon tunggu.");
+          google.script.run
+            .withSuccessHandler(res => {
+              if (res.success) {
+                refreshContextData(); 
+                Swal.fire('Sukses!', res.message, 'success');
+              } else {
+                hideL();
+                Swal.fire('Gagal', res.message, 'error');
+              }
+            })
+            .withFailureHandler(err => {
+              hideL();
+              Swal.fire('Error Sistem', err.message, 'error');
+            })
+            .kalkulasiOtomatisP5(idPeriode, idKelas, idProyek);
+        }
+      });
+    }
+
+    function exportP5Data(format) {
+      showL("Mempersiapkan Dokumen Ekspor...");
+      let idKls = document.getElementById('p_kelas').value;
+      let idProyek = document.getElementById('p_proyek').value;
+      
+      if (!idKls || !idProyek) {
+        hideL();
+        return Swal.fire('Perhatian', 'Pilih Kelas dan Proyek terlebih dahulu.', 'warning');
+      }
+
+      let dataP5Raw = (DB.TransNilaiP5 || []).filter(d => String(d.id_kelas) === String(idKls) && String(d.id_proyek) === String(idProyek));
+      if(dataP5Raw.length === 0) {
+         hideL();
+         return Swal.fire('Kosong', 'Tidak ada data untuk diekspor.', 'info');
+      }
+
+      let dataToExport = dataP5Raw.map(row => {
+        let namaSiswa = DB.MasterSiswa?.find(s => String(s.id_siswa) === String(row.id_siswa))?.nama_siswa || row.id_siswa;
+        let targetObj = DB.MasterTargetP5?.find(t => String(t.id_target) === String(row.id_target));
+        let namaTarget = targetObj ? `${targetObj.dimensi} - ${targetObj.elemen || ''}` : row.id_target;
+        return { ...row, nama_siswa: namaSiswa, nama_target: namaTarget };
+      });
+
+      if(searchP5Query !== "") {
+         dataToExport = dataToExport.filter(d => 
+            d.nama_siswa.toLowerCase().includes(searchP5Query) ||
+            d.nama_target.toLowerCase().includes(searchP5Query) ||
+            d.predikat.toLowerCase().includes(searchP5Query) ||
+            String(d.skor_rata2).includes(searchP5Query)
+         );
+      }
+
+      dataToExport.sort((a, b) => {
+        let valA, valB;
+        if (sortP5Col === 'siswa') { valA = a.nama_siswa; valB = b.nama_siswa; }
+        else if (sortP5Col === 'target') { valA = a.nama_target; valB = b.nama_target; }
+        else if (sortP5Col === 'skor') { valA = Number(a.skor_rata2); valB = Number(b.skor_rata2); }
+        else if (sortP5Col === 'predikat') { valA = a.predikat; valB = b.predikat; }
+        if (valA < valB) return sortP5Asc ? -1 : 1;
+        if (valA > valB) return sortP5Asc ? 1 : -1;
+        return 0;
+      });
+
+      let sek = (DB.PengaturanSekolah && DB.PengaturanSekolah.length > 0) ? DB.PengaturanSekolah[0] : { nama_sekolah: 'Sekolah', alamat_sekolah: '-', kota: '-', nama_kepsek: 'Kepala Sekolah', nip_kepsek: '-' };
+      let proyekObj = DB.MasterProyek?.find(p => String(p.id_proyek) === String(idProyek));
+      let namaProyek = proyekObj ? proyekObj.judul_proyek : "Proyek P5";
+      let kelasObj = DB.MasterKelas?.find(k => String(k.id_kelas) === String(idKls));
+      let namaKelas = kelasObj ? kelasObj.nama_kelas : "Kelas";
+
+      if(format === 'csv') {
+        hideL();
+        let csvContent = "data:text/csv;charset=utf-8,No,Nama Siswa,Dimensi Target P5,Skor STNKM,Predikat\n";
+        dataToExport.forEach((r, idx) => { 
+           csvContent += `"${idx+1}","${r.nama_siswa}","${r.nama_target}","${r.skor_rata2}","${r.predikat}"\n`; 
+        });
+        let encodedUri = encodeURI(csvContent);
+        let link = document.createElement("a"); link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `Rekap_P5_${namaKelas}_${new Date().getTime()}.csv`);
+        document.body.appendChild(link); link.click(); document.body.removeChild(link);
+      } 
+      else if (format === 'pdf') {
+         let printWin = window.open('', '', 'width=1024,height=768');
+         let today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+         
+         let html = `<html><head><title>Laporan Evaluasi P5</title>
+           <style> 
+             @page { size: portrait; margin: 15mm; }
+             body { font-family: 'Times New Roman', Times, serif; color: #000; font-size: 12px; }
+             table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+             th, td { border: 1px solid #000; padding: 6px 8px; text-align: left; }
+             .header-col { background-color: #f0f0f0; text-align: center; font-weight: bold; }
+             .kop-surat-container { background-color: #fff; border: none; padding: 0 0 20px 0; }
+             .kop-surat { text-align: center; border-bottom: 3px solid #000; padding-bottom: 10px; }
+             .kop-surat h3 { margin: 0; font-size: 20px; text-transform: uppercase; }
+             .kop-surat p { margin: 5px 0 0 0; font-size: 14px; font-weight: normal; }
+             .ttd-box { width: 250px; float: right; text-align: center; margin-top: 30px; font-size: 14px;}
+             thead { display: table-header-group; }
+             tfoot { display: table-footer-group; }
+             tr { page-break-inside: avoid; }
+           </style></head><body>
+           
+           <table>
+             <thead>
+               <tr>
+                 <th colspan="5" class="kop-surat-container">
+                   <div class="kop-surat">
+                     <h3>LAPORAN EVALUASI P5</h3>
+                     <p>${sek.nama_sekolah} | ${sek.alamat_sekolah}</p>
+                     <p style="margin-top:5px; font-size:13px;"><strong>Proyek: ${namaProyek} | Kelas: ${namaKelas}</strong></p>
+                   </div>
+                 </th>
+               </tr>
+               <tr>
+                 <th class="header-col" width="5%">No</th>
+                 <th class="header-col" width="25%">Nama Siswa</th>
+                 <th class="header-col" width="45%">Dimensi Target P5</th>
+                 <th class="header-col" width="12%">Skor STNKM</th>
+                 <th class="header-col" width="13%">Predikat</th>
+               </tr>
+             </thead>
+             <tbody>`;
+             
+         dataToExport.forEach((r, idx) => { 
+           html += `<tr>
+                     <td style="text-align:center;">${idx+1}</td>
+                     <td>${r.nama_siswa}</td>
+                     <td>${r.nama_target}</td>
+                     <td style="text-align:center;">${r.skor_rata2}</td>
+                     <td style="text-align:center; font-weight:bold;">${r.predikat}</td>
+                   </tr>`; 
+         });
+         
+         html += `
+             </tbody>
+             <tfoot>
+               <tr>
+                 <td colspan="5" style="border: none; padding: 0;">
+                   <div class="ttd-box">
+                     ${sek.kota}, ${today}<br>Kepala Sekolah<br><br><br><br><br>
+                     <strong>${sek.nama_kepsek}</strong><br>NIP. ${sek.nip_kepsek}
+                   </div>
+                 </td>
+               </tr>
+             </tfoot>
+           </table>
+           </body></html>`;
+           
+         hideL();
+         printWin.document.write(html); 
+         printWin.document.close(); 
+         printWin.focus();
+         setTimeout(() => { printWin.print(); printWin.close(); }, 800); 
+      }
+    }
+
+  </script>
+</body>
+
+</html>

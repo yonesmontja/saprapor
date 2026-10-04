@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Input Nilai Massal - EduRapor</title>
+  
+  <!-- Vendor Stylesheets -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  
+  <!-- Vendor Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body { 
+      background-color: #f4f6f9; 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+    }
+    #loadingOverlay {
+      position: fixed; 
+      top: 0; 
+      left: 0; 
+      width: 100%; 
+      height: 100%;
+      background: rgba(255, 255, 255, 0.95); 
+      z-index: 9999;
+      display: flex; 
+      flex-direction: column; 
+      justify-content: center; 
+      align-items: center;
+    }
+    .sortable { 
+      cursor: pointer; 
+      user-select: none; 
+      transition: background-color 0.2s; 
+      white-space: nowrap; 
+    }
+    .sortable:hover { 
+      background-color: #e9ecef !important; 
+    }
+    .stat-card {
+      border: none;
+      border-radius: 14px;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    }
+    .badge-kkm {
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 20px;
+    }
+    .score-input:focus {
+      border-color: #0d6efd;
+      box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Layar Pemuat Data -->
+  <div id="loadingOverlay">
+    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div>
+    <h5 class="mt-3 text-muted fw-bold" id="loadingText">Sinkronisasi Referensi Kelas...</h5>
+  </div>
+
+  <!-- Identitas URL & Navigasi Terpadu -->
+  <script>const SCRIPT_URL = "<?= scriptUrl ?>";</script>
+  <?!= include('navbar'); ?>
+
+  <div class="container mt-4 mb-5">
+    
+    <!-- Header Halaman & Lencana Pengguna (RBAC) -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-2">
+      <div>
+        <h3 class="fw-bold text-dark m-0">
+          <i class="fa-solid fa-pen-to-square text-primary me-2"></i>Catat Nilai Kelas (Batch Input)
+        </h3>
+        <small class="text-muted">Pencatatan capaian akademik siswa berbasis materi dan dimensi STNKM</small>
+      </div>
+      <div id="userBadgeContainer">
+        <span id="userBadge" class="badge bg-secondary px-3 py-2 fs-6 shadow-sm">
+          <i class="fa-solid fa-spinner fa-spin me-1"></i> Memverifikasi Sesi...
+        </span>
+      </div>
+    </div>
+
+    <!-- PANEL FILTER SELEKSI METADATA PENILAIAN -->
+    <div class="card p-4 shadow-sm mb-4 border-top border-primary border-4 rounded-4" id="formAreaContainer">
+      <div class="row mb-3 g-3">
+        <div class="col-md-4">
+          <label class="fw-bold text-primary mb-1"><i class="fa-solid fa-landmark me-1"></i>Kelas</label>
+          <select class="form-select border-primary" id="b_kelas" onchange="onFilterChange()"></select>
+        </div>
+        <div class="col-md-4">
+          <label class="fw-bold text-primary mb-1"><i class="fa-solid fa-book me-1"></i>Mata Pelajaran</label>
+          <select class="form-select border-primary" id="b_mapel" onchange="onFilterChange()"></select>
+        </div>
+        <div class="col-md-4">
+          <label class="fw-bold text-primary mb-1"><i class="fa-solid fa-calendar-days me-1"></i>Periode Akademik</label>
+          <select class="form-select border-primary" id="b_periode" onchange="onFilterChange()"></select>
+        </div>
+      </div>
+      
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="fw-bold text-primary mb-1"><i class="fa-solid fa-tag me-1"></i>Jenis Penilaian</label>
+          <select class="form-select border-primary" id="b_jenis" onchange="onFilterChange()"></select>
+        </div>
+        <div class="col-md-4">
+          <label class="fw-bold text-primary mb-1"><i class="fa-solid fa-list-check me-1"></i>Topik / Materi</label>
+          <select class="form-select border-primary" id="b_materi" onchange="triggerBatchForm()">
+            <option value="">- Pilih Materi -</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="fw-bold text-primary mb-1"><i class="fa-solid fa-calendar-day me-1"></i>Tanggal Penilaian</label>
+          <input type="date" class="form-control border-primary fw-bold text-primary" id="b_tgl" required>
+        </div>
+      </div>
+
+      <!-- Banner Mode Edit Aktif -->
+      <div id="editAlertBox" class="alert alert-warning mt-3 mb-0 py-2 d-none fw-bold shadow-sm d-flex justify-content-between align-items-center">
+        <div>
+          <i class="fa-solid fa-pen-to-square me-2"></i> Mode Edit Aktif: Mengubah Metadata Penilaian Lama.
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-dark fw-bold" onclick="cancelEditMode()">
+          <i class="fa-solid fa-xmark me-1"></i> Batalkan Edit
+        </button>
+      </div>
+    </div>
+
+    <!-- FORM INPUT NILAI SISWA (BATCH INPUT) -->
+    <form onsubmit="handleBatchNilaiSubmit(event)" id="formBatchNilai" class="d-none">
+      
+      <!-- TAHAP 2: PANEL ANALITIK & STATISTIK INSTAN NILAI KELAS -->
+      <div class="card shadow-sm border-0 rounded-4 p-4 mb-4 bg-white border-start border-primary border-4" id="statPanelContainer">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3">
+          <div>
+            <h5 class="fw-bold text-primary m-0">
+              <i class="fa-solid fa-chart-pie me-2"></i>Panel Analitik & Statistik Kelas
+            </h5>
+            <small class="text-muted">Kalkulasi performa langsung berdasarkan KKM Mapel (<span id="statKkmBadge" class="badge bg-secondary">KKM: 75</span>)</small>
+          </div>
+          <span class="badge bg-primary bg-opacity-10 text-primary border border-primary px-3 py-2 mt-2 mt-md-0 fw-semibold">
+            <i class="fa-solid fa-bolt me-1 text-warning"></i> Real-Time Calculation
+          </span>
+        </div>
+
+        <!-- Kartu Metrik Ringkas -->
+        <div class="row g-3 mb-3">
+          <div class="col-6 col-md-3">
+            <div class="card stat-card bg-primary bg-opacity-10 border-0 p-3 text-center">
+              <span class="text-muted small fw-bold">RATA-RATA KELAS</span>
+              <h3 class="fw-bold text-primary m-0 mt-1" id="statRataRata">0</h3>
+              <small class="text-muted fw-semibold" id="statRataKet">-</small>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="card stat-card bg-info bg-opacity-10 border-0 p-3 text-center">
+              <span class="text-muted small fw-bold">RENTANG NILAI</span>
+              <div class="d-flex justify-content-center align-items-center gap-2 mt-1">
+                <span class="badge bg-success fs-6" id="statTertinggi" title="Tertinggi">Max: 0</span>
+                <span class="badge bg-danger fs-6" id="statTerendah" title="Terendah">Min: 0</span>
+              </div>
+              <small class="text-muted fw-semibold mt-1">Skor Maks & Min</small>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="card stat-card bg-success bg-opacity-10 border-0 p-3 text-center">
+              <span class="text-muted small fw-bold">KETUNTASAN KKM</span>
+              <h3 class="fw-bold text-success m-0 mt-1" id="statKetuntasanPersen">0%</h3>
+              <small class="text-muted fw-semibold" id="statKetuntasanCount">0 / 0 Siswa Tuntas</small>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="card stat-card bg-warning bg-opacity-10 border-0 p-3 text-center">
+              <span class="text-muted small fw-bold">PROGRES INPUT</span>
+              <h3 class="fw-bold text-dark m-0 mt-1" id="statTerisiCount">0/0</h3>
+              <small class="text-muted fw-semibold" id="statTerisiPersen">0% Siswa Dinilai</small>
+            </div>
+          </div>
+        </div>
+
+        <!-- Distribusi Kategori Capaian & Diagram Batang -->
+        <div class="row align-items-center g-3 pt-2 border-top">
+          <div class="col-md-7">
+            <small class="fw-bold text-muted d-block mb-2"><i class="fa-solid fa-layer-group me-1"></i>Distribusi Kategori Capaian Siswa:</small>
+            <div class="d-flex flex-wrap gap-2" id="kategoriBadgesContainer">
+              <span class="badge bg-success p-2">Sangat Baik (&ge; 90): <b id="cntSangatBaik">0</b></span>
+              <span class="badge bg-primary p-2">Baik (80 - 89): <b id="cntBaik">0</b></span>
+              <span class="badge bg-warning text-dark p-2">Cukup (70 - 79): <b id="cntCukup">0</b></span>
+              <span class="badge bg-danger p-2">Perlu Bimbingan (&lt; 70): <b id="cntKurang">0</b></span>
+            </div>
+          </div>
+          <div class="col-md-5">
+            <div style="height: 110px; position: relative;">
+              <canvas id="canvasDistribusiNilai"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LEMBAR TABEL NILAI SISWA -->
+      <div class="card shadow-sm p-4 mb-4 border-0 rounded-4">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3 gap-2">
+          <h5 class="fw-bold m-0 text-secondary">
+            <i class="fa-solid fa-users-rectangle me-2"></i>Daftar Siswa & Pengisian Nilai
+          </h5>
+          <button type="submit" class="btn btn-success btn-lg shadow-sm px-4 rounded-pill" id="btnSubmitForm">
+            <i class="fa-solid fa-floppy-disk me-1"></i> Simpan Nilai Kelas
+          </button>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover table-bordered align-middle text-center" style="font-size: 14px;">
+            <thead class="table-dark">
+              <tr>
+                <th width="8%">No</th>
+                <th width="50%" class="text-start">Nama Siswa</th>
+                <th width="24%">Nilai (0 - 100)<br><small class="fw-normal text-light opacity-75">(Kosongkan jika tidak hadir)</small></th>
+                <th width="18%">Predikat & Status</th>
+              </tr>
+            </thead>
+            <tbody id="batchSiswaBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </form>
+
+    <!-- Pesan Belum Memilih Filter -->
+    <div id="batchEmptyMsg" class="card p-5 text-center shadow-sm text-muted mb-4 border-0 rounded-4">
+      <i class="fa-solid fa-file-lines fa-3x mb-3 opacity-50"></i>
+      <h5>Lengkapi filter Kelas, Mapel, Periode, Jenis, dan Materi di atas untuk memunculkan lembar nilai siswa.</h5>
+    </div>
+
+    <!-- TABEL RIWAYAT INPUT NILAI -->
+    <h5 class="mt-5 mb-3 fw-bold"><i class="fa-solid fa-clock-rotate-left me-2"></i>Riwayat Input Nilai (Kelas Ini)</h5>
+    <div class="card shadow-sm p-4 border-0 rounded-4">
+      <div class="row mb-3 align-items-center g-2">
+        <div class="col-md-6 mb-2">
+          <div class="input-group input-group-sm">
+            <span class="input-group-text bg-white text-primary border-primary"><i class="fa-solid fa-magnifying-glass"></i></span>
+            <input type="text" class="form-control border-primary" id="searchInput" placeholder="Cari nama siswa, mapel, materi, pengisi...">
+          </div>
+        </div>
+        <!-- TAHAP 3: TOMBOL EKSPOR TERPADU (CSV & PDF) -->
+        <div class="col-md-6 mb-2 text-md-end">
+          <button class="btn btn-sm btn-outline-success fw-bold me-2 px-3 rounded-pill" onclick="exportData('csv')">
+            <i class="fa-solid fa-file-csv me-1"></i> Ekspor CSV Terpadu
+          </button>
+          <button class="btn btn-sm btn-outline-danger fw-bold px-3 rounded-pill" onclick="exportData('pdf')">
+            <i class="fa-solid fa-file-pdf me-1"></i> Cetak PDF Resmi
+          </button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-hover table-bordered text-center align-middle" style="font-size: 13px;">
+          <thead class="table-secondary">
+            <tr>
+              <th class="sortable text-nowrap" onclick="sortTable('tanggal')">Tanggal <i class="fa-solid fa-sort"></i></th>
+              <th class="sortable text-start text-nowrap" onclick="sortTable('siswa')">Siswa <i class="fa-solid fa-sort"></i></th>
+              <th class="sortable text-nowrap" onclick="sortTable('mapel')">Mapel <i class="fa-solid fa-sort"></i></th>
+              <th class="sortable text-nowrap" onclick="sortTable('jenis')">Jenis <i class="fa-solid fa-sort"></i></th>
+              <th>Materi & Kategori STNKM</th>
+              <th class="sortable text-nowrap" onclick="sortTable('nilai')">Nilai <i class="fa-solid fa-sort"></i></th>
+              <th class="sortable text-nowrap" onclick="sortTable('guru')">Pengisi Data <i class="fa-solid fa-sort"></i></th>
+              <th width="10%">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="nilaiTableBody"></tbody>
+        </table>
+      </div>
+      
+      <div class="d-flex justify-content-between align-items-center mt-3">
+        <button class="btn btn-sm btn-outline-primary fw-bold" id="btnPrevNilai" onclick="changeNilaiPage(-1)">
+          <i class="fa-solid fa-chevron-left me-1"></i> Sebelumnya
+        </button>
+        <span id="pageIndicatorNilai" class="text-muted fw-bold small">Halaman 1</span>
+        <button class="btn btn-sm btn-outline-primary fw-bold" id="btnNextNilai" onclick="changeNilaiPage(1)">
+          Selanjutnya <i class="fa-solid fa-chevron-right ms-1"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCRIPT LOGIKA BISNIS -->
+  <script>
+    // Failsafe Timer: Hilangkan overlay setelah 6 detik jika server lambat
+    let failsafeTimer = setTimeout(() => {
+      let overlay = document.getElementById('loadingOverlay');
+      if (overlay) overlay.style.display = 'none';
+    }, 6000);
+
+    // State Global
+    let DB = {};
+    let currentContext = { kelas: null, periode: null };
+    let cUser = {};
+    let isEditModeGlobal = false;
+    let editOriginalIdNilai = null;
+
+    // State Tabel Riwayat
+    let currentNilaiPage = 1;
+    const pageSizeNilai = 10;
+    let sortColNilai = 'tanggal';
+    let sortAscNilai = false;
+    let searchQueryNilai = '';
+
+    // State Chart Analitik
+    let distribusiChartInstance = null;
+
+    // Helper Layar Pemuat
+    function showL(text) {
+      let txt = document.getElementById('loadingText');
+      if (txt) txt.innerText = text || "Memproses...";
+      let ovr = document.getElementById('loadingOverlay');
+      if (ovr) ovr.style.display = 'flex';
+    }
+    function hideL() {
+      let ovr = document.getElementById('loadingOverlay');
+      if (ovr) ovr.style.display = 'none';
+      if (failsafeTimer) clearTimeout(failsafeTimer);
+    }
+
+    // Inisialisasi Saat Dokumen Siap
+    document.addEventListener("DOMContentLoaded", function() {
+      try {
+        cUser = JSON.parse(sessionStorage.getItem('eduUser') || '{}');
+      } catch (e) {
+        cUser = {};
+      }
+
+      if (!cUser || (!cUser.name && !cUser.username)) {
+        window.top.location.href = SCRIPT_URL + '?page=login';
+        return;
+      }
+
+      let uBadge = document.getElementById('userBadge');
+      if (uBadge) {
+        if (cUser.role === 'admin') {
+          uBadge.className = 'badge bg-danger px-3 py-2 fs-6 shadow-sm';
+          uBadge.innerHTML = `<i class="fa-solid fa-user-shield me-1"></i> ${cUser.name || cUser.username} (Administrator)`;
+        } else {
+          uBadge.className = 'badge bg-primary px-3 py-2 fs-6 shadow-sm';
+          uBadge.innerHTML = `<i class="fa-solid fa-chalkboard-user me-1"></i> ${cUser.name || cUser.username} (Guru Mapel)`;
+        }
+      }
+
+      document.getElementById('b_tgl').value = new Date().toISOString().split('T')[0];
+
+      document.getElementById('searchInput').addEventListener('input', function(e) {
+        handleSearch(e.target.value);
+      });
+
+      // Muat data master referensi
+      loadMasterData();
+    });
+
+    function loadMasterData() {
+      showL("Sinkronisasi Referensi Kelas...");
+      google.script.run
+        .withSuccessHandler(function(res) {
+          DB = res || {};
+          populateDropdowns();
+          hideL();
+        })
+        .withFailureHandler(function(err) {
+          hideL();
+          Swal.fire('Koneksi Gagal', 'Gagal memuat data master: ' + err.message, 'error');
+        })
+        .getMasterReferences(); // Fungsi resmi backend Code.gs
+    }
+
+    // Pemeriksaan fleksibel mata pelajaran yang diampu guru
+    function isMapelDiampu(m) {
+      if (!cUser || cUser.role === 'admin' || cUser.role === 'kepsek') return true;
+      let idGuruMapel = String(m.id_guru || '').trim().toLowerCase();
+      let userIdGuru = String(cUser.id_guru || '').trim().toLowerCase();
+      let userName = String(cUser.name || '').trim().toLowerCase();
+      let userLogin = String(cUser.username || '').trim().toLowerCase();
+      
+      return (
+        idGuruMapel === userIdGuru ||
+        idGuruMapel === userName ||
+        idGuruMapel === userLogin ||
+        (Array.isArray(cUser.mapel_diampu) && cUser.mapel_diampu.includes(String(m.id_mapel)))
+      );
+    }
+
+    // Mengisi Seluruh Dropdown Filter Utama
+    function populateDropdowns() {
+      // 1. Dropdown Kelas
+      let klsOpts = '<option value="">- Pilih Kelas -</option>';
+      (DB.MasterKelas || []).forEach(k => {
+        klsOpts += `<option value="${k.id_kelas}">${k.nama_kelas}</option>`;
+      });
+      document.getElementById('b_kelas').innerHTML = klsOpts;
+
+      // 2. Dropdown Periode
+      let perOpts = '<option value="">- Pilih Periode -</option>';
+      (DB.MasterPeriode || []).forEach(p => {
+        let sel = (p.is_active === 'Y' || p.is_active === true || p.status_aktif === 'AKTIF') ? 'selected' : '';
+        perOpts += `<option value="${p.id_periode}" ${sel}>${p.tahun_ajaran} (${p.semester})</option>`;
+      });
+      document.getElementById('b_periode').innerHTML = perOpts;
+
+      // 3. Dropdown Jenis Penilaian
+      let jnsOpts = '<option value="">- Pilih Jenis -</option>';
+      (DB.MasterMBK || []).forEach(j => {
+        jnsOpts += `<option value="${j.id_jenis}">${j.kategori_penilaian}</option>`;
+      });
+      document.getElementById('b_jenis').innerHTML = jnsOpts;
+
+      // 4. Dropdown Mapel
+      updateMapelDropdown();
+    }
+
+    function updateMapelDropdown() {
+      let elMapel = document.getElementById('b_mapel');
+      let mapelOpts = '<option value="">- Pilih Mata Pelajaran -</option>';
+      
+      let listMapel = DB.MasterMapel || [];
+      if (cUser && cUser.role === 'guru') {
+        let mapelGuru = listMapel.filter(isMapelDiampu);
+        if (mapelGuru.length > 0) listMapel = mapelGuru;
+      }
+
+      listMapel.forEach(m => {
+        let kkmVal = m.kkm ? ` (KKM: ${m.kkm})` : ' (KKM: 75)';
+        mapelOpts += `<option value="${m.id_mapel}">${m.nama_mapel}${kkmVal}</option>`;
+      });
+
+      if (listMapel.length === 0) {
+        mapelOpts = '<option value="">- Anda tidak memiliki akses mapel -</option>';
+      }
+
+      elMapel.innerHTML = mapelOpts;
+      if (cUser && cUser.role === 'guru' && listMapel.length === 1) {
+        elMapel.value = listMapel[0].id_mapel;
+      }
+    }
+
+    function updateMateriDropdown() {
+      let idKls = document.getElementById('b_kelas').value;
+      let idMap = document.getElementById('b_mapel').value;
+      let elMateri = document.getElementById('b_materi');
+      let valMateriSebelumnya = elMateri.value;
+
+      let htmlMat = '<option value="">- Pilih Materi -</option>';
+      if (idKls && idMap) {
+        let listMateri = (DB.MasterMateri || []).filter(m => 
+          String(m.id_mapel).trim() === String(idMap).trim() &&
+          (!m.id_kelas || String(m.id_kelas).trim() === String(idKls).trim())
+        );
+
+        listMateri.forEach(m => {
+          let namaKategori = "";
+          let katObj = (DB.MasterKategoriPenilaian || []).find(k => String(k.id_kategori) === String(m.id_kategori));
+          if (katObj) namaKategori = ` [${katObj.nama_kategori}]`;
+          htmlMat += `<option value="${m.id_materi}">${m.nama_materi}${namaKategori}</option>`;
+        });
+
+        if (listMateri.length === 0) {
+          htmlMat = '<option value="">- Belum ada materi untuk mapel ini -</option>';
+        }
+      } else if (!idKls) {
+        htmlMat = '<option value="">- Pilih Kelas Dulu -</option>';
+      } else if (!idMap) {
+        htmlMat = '<option value="">- Pilih Mapel Dulu -</option>';
+      }
+
+      elMateri.innerHTML = htmlMat;
+      if (valMateriSebelumnya && isEditModeGlobal) {
+        elMateri.value = valMateriSebelumnya;
+      }
+    }
+
+    function onFilterChange() {
+      let idKls = document.getElementById('b_kelas').value;
+      let idPer = document.getElementById('b_periode').value;
+
+      updateMateriDropdown();
+
+      if (idKls && idPer && (currentContext.kelas !== idKls || currentContext.periode !== idPer)) {
+        showL("Menarik Riwayat Nilai Kelas...");
+        google.script.run
+          .withSuccessHandler(function(res) {
+            DB = res || {};
+            currentContext = { kelas: idKls, periode: idPer };
+            updateMateriDropdown();
+            renderPaginatedNilai();
+            triggerBatchForm();
+            hideL();
+          })
+          .withFailureHandler(function(err) {
+            hideL();
+            Swal.fire('Error Jaringan', err.message, 'error');
+          })
+          .getTransactionalDataByContext(idKls, idPer, true);
+      } else {
+        renderPaginatedNilai();
+        triggerBatchForm();
+      }
+    }
+
+    function triggerBatchForm() {
+      let idKls = document.getElementById('b_kelas').value;
+      let idMap = document.getElementById('b_mapel').value;
+      let idPer = document.getElementById('b_periode').value;
+      let idJns = document.getElementById('b_jenis').value;
+      let idMat = document.getElementById('b_materi').value;
+
+      let form = document.getElementById('formBatchNilai');
+      let msg = document.getElementById('batchEmptyMsg');
+      let tbody = document.getElementById('batchSiswaBody');
+
+      if (!idKls || !idMap || !idPer || !idJns || !idMat) {
+        form.classList.add('d-none');
+        msg.classList.remove('d-none');
+        return;
+      }
+
+      msg.classList.add('d-none');
+      form.classList.remove('d-none');
+
+      let siswaList = (DB.MasterSiswa || []).filter(s => String(s.id_kelas).trim() === String(idKls).trim());
+      
+      let mapelObj = (DB.MasterMapel || []).find(m => String(m.id_mapel) === String(idMap));
+      let kkm = mapelObj && mapelObj.kkm ? parseFloat(mapelObj.kkm) : 75;
+      document.getElementById('statKkmBadge').innerText = `KKM: ${kkm}`;
+
+      let rowsHtml = '';
+      if (siswaList.length === 0) {
+        rowsHtml = '<tr><td colspan="4" class="text-muted py-4">Belum ada siswa terdaftar pada kelas ini.</td></tr>';
+      } else {
+        siswaList.forEach((s, idx) => {
+          let existing = (DB.TransNilai || []).find(n => 
+            String(n.id_siswa) === String(s.id_siswa) &&
+            String(n.id_kelas) === String(idKls) &&
+            String(n.id_mapel) === String(idMap) &&
+            String(n.id_periode) === String(idPer) &&
+            String(n.id_jenis) === String(idJns) &&
+            String(n.id_materi) === String(idMat)
+          );
+
+          let valNilai = (existing && existing.nilai !== undefined && existing.nilai !== null && existing.nilai !== '') 
+                         ? existing.nilai : '';
+          
+          let statusBadge = '<span class="badge bg-light text-muted border">-</span>';
+          if (valNilai !== '') {
+            let vNum = parseFloat(valNilai);
+            statusBadge = (vNum >= kkm) 
+              ? '<span class="badge bg-success badge-kkm"><i class="fa-solid fa-check me-1"></i>Tuntas</span>'
+              : '<span class="badge bg-danger badge-kkm"><i class="fa-solid fa-xmark me-1"></i>Belum Tuntas</span>';
+          }
+
+          rowsHtml += `
+            <tr>
+              <td class="fw-bold">${idx + 1}</td>
+              <td class="text-start">
+                <span class="fw-bold text-dark">${s.nama_siswa || '-'}</span>
+                <br><small class="text-muted">NISN: ${s.id_siswa || '-'}</small>
+              </td>
+              <td>
+                <input type="number" step="any" min="0" max="100" 
+                       class="form-control text-center fw-bold score-input" 
+                       data-idsiswa="${s.id_siswa}" 
+                       value="${valNilai}" 
+                       placeholder="Kosong" 
+                       oninput="onScoreInputChanged(this)">
+              </td>
+              <td id="statusCell_${s.id_siswa}">
+                ${statusBadge}
+              </td>
+            </tr>
+          `;
+        });
+      }
+
+      tbody.innerHTML = rowsHtml;
+      updateStatistikBatch();
+    }
+
+    function onScoreInputChanged(inputEl) {
+      let idSis = inputEl.getAttribute('data-idsiswa');
+      let val = inputEl.value.trim();
+      let statusCell = document.getElementById('statusCell_' + idSis);
+
+      let idMap = document.getElementById('b_mapel').value;
+      let mapelObj = (DB.MasterMapel || []).find(m => String(m.id_mapel) === String(idMap));
+      let kkm = mapelObj && mapelObj.kkm ? parseFloat(mapelObj.kkm) : 75;
+
+      if (val === '' || isNaN(val)) {
+        statusCell.innerHTML = '<span class="badge bg-light text-muted border">-</span>';
+      } else {
+        let num = parseFloat(val);
+        if (num >= kkm) {
+          statusCell.innerHTML = '<span class="badge bg-success badge-kkm"><i class="fa-solid fa-check me-1"></i>Tuntas</span>';
+        } else {
+          statusCell.innerHTML = '<span class="badge bg-danger badge-kkm"><i class="fa-solid fa-xmark me-1"></i>Belum Tuntas</span>';
+        }
+      }
+
+      updateStatistikBatch();
+    }
+
+    // TAHAP 2: KALKULASI ANALITIK LIVE & CHART.JS
+    function updateStatistikBatch() {
+      let idMap = document.getElementById('b_mapel').value;
+      let mapelObj = (DB.MasterMapel || []).find(m => String(m.id_mapel) === String(idMap));
+      let kkm = mapelObj && mapelObj.kkm ? parseFloat(mapelObj.kkm) : 75;
+
+      let inputs = document.querySelectorAll('.score-input');
+      let totalSiswa = inputs.length;
+      let filledScores = [];
+
+      let countTuntas = 0;
+      let cntSB = 0; // >= 90
+      let cntB = 0;  // 80 - 89
+      let cntC = 0;  // 70 - 79
+      let cntK = 0;  // < 70
+
+      inputs.forEach(inp => {
+        let val = inp.value.trim();
+        if (val !== '' && !isNaN(val)) {
+          let score = parseFloat(val);
+          filledScores.push(score);
+
+          if (score >= kkm) countTuntas++;
+
+          if (score >= 90) cntSB++;
+          else if (score >= 80) cntB++;
+          else if (score >= 70) cntC++;
+          else cntK++;
+        }
+      });
+
+      let terisiCount = filledScores.length;
+      let persenTerisi = totalSiswa > 0 ? Math.round((terisiCount / totalSiswa) * 100) : 0;
+
+      let avg = 0;
+      let max = 0;
+      let min = 0;
+
+      if (terisiCount > 0) {
+        let sum = filledScores.reduce((a, b) => a + b, 0);
+        avg = (sum / terisiCount).toFixed(1);
+        max = Math.max(...filledScores);
+        min = Math.min(...filledScores);
+      }
+
+      let persenKetuntasan = terisiCount > 0 ? Math.round((countTuntas / terisiCount) * 100) : 0;
+
+      document.getElementById('statRataRata').innerText = avg;
+      document.getElementById('statRataKet').innerText = (avg >= kkm) ? 'Di atas KKM' : 'Di bawah KKM';
+      document.getElementById('statTertinggi').innerText = `Max: ${max}`;
+      document.getElementById('statTerendah').innerText = `Min: ${min}`;
+      document.getElementById('statKetuntasanPersen').innerText = `${persenKetuntasan}%`;
+      document.getElementById('statKetuntasanCount').innerText = `${countTuntas} / ${terisiCount} Siswa Tuntas`;
+      document.getElementById('statTerisiCount').innerText = `${terisiCount}/${totalSiswa}`;
+      document.getElementById('statTerisiPersen').innerText = `${persenTerisi}% Siswa Dinilai`;
+
+      document.getElementById('cntSangatBaik').innerText = cntSB;
+      document.getElementById('cntBaik').innerText = cntB;
+      document.getElementById('cntCukup').innerText = cntC;
+      document.getElementById('cntKurang').innerText = cntK;
+
+      renderDistribusiChart([cntK, cntC, cntB, cntSB]);
+    }
+
+    function renderDistribusiChart(dataArray) {
+      let canvas = document.getElementById('canvasDistribusiNilai');
+      if (!canvas || typeof Chart === 'undefined') return;
+
+      let ctx = canvas.getContext('2d');
+      if (distribusiChartInstance) {
+        distribusiChartInstance.destroy();
+      }
+
+      distribusiChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['<70', '70-79', '80-89', '≥90'],
+          datasets: [{
+            data: dataArray,
+            backgroundColor: [
+              'rgba(220, 53, 69, 0.75)',
+              'rgba(255, 193, 7, 0.75)',
+              'rgba(13, 110, 253, 0.75)',
+              'rgba(25, 135, 84, 0.75)'
+            ],
+            borderColor: ['#dc3545', '#ffc107', '#0d6efd', '#198754'],
+            borderWidth: 1,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(context) { return ` ${context.parsed.y} Siswa`; }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { precision: 0, stepSize: 1, font: { size: 10 } },
+              grid: { color: 'rgba(0,0,0,0.05)' }
+            },
+            x: {
+              ticks: { font: { size: 10, weight: 'bold' } },
+              grid: { display: false }
+            }
+          }
+        }
+      });
+    }
+
+    // Submit Nilai Siswa
+    function handleBatchNilaiSubmit(e) {
+      e.preventDefault();
+
+      let idKls = document.getElementById('b_kelas').value;
+      let idMap = document.getElementById('b_mapel').value;
+      let idPer = document.getElementById('b_periode').value;
+      let idJns = document.getElementById('b_jenis').value;
+      let idMat = document.getElementById('b_materi').value;
+      let tgl = document.getElementById('b_tgl').value;
+
+      if (!tgl) {
+        return Swal.fire('Perhatian', 'Tanggal penilaian wajib diisi.', 'warning');
+      }
+
+      let rows = document.querySelectorAll('.score-input');
+      let payloadRecords = [];
+      let auditUser = cUser.name || cUser.username || "Guru Mapel";
+
+      rows.forEach(inp => {
+        let val = inp.value.trim();
+        let idSis = inp.getAttribute('data-idsiswa');
+        if (val !== '') {
+          payloadRecords.push({
+            id_nilai: "NIL-" + new Date().getTime() + "-" + idSis,
+            tanggal: tgl,
+            id_siswa: idSis,
+            id_kelas: idKls,
+            id_mapel: idMap,
+            id_periode: idPer,
+            id_jenis: idJns,
+            id_materi: idMat,
+            nilai: parseFloat(val),
+            id_guru: auditUser
+          });
+        }
+      });
+
+      if (payloadRecords.length === 0) {
+        return Swal.fire('Peringatan', 'Tidak ada nilai yang diinput atau diubah.', 'warning');
+      }
+
+      showL("Menyimpan Nilai Kelas ke Database...");
+      google.script.run
+        .withSuccessHandler(function(res) {
+          hideL();
+          if (res && res.success) {
+            Swal.fire({
+              icon: 'success',
+              title: 'Berhasil Disimpan',
+              text: `${payloadRecords.length} baris nilai berhasil disimpan.`,
+              timer: 2000,
+              showConfirmButton: false
+            });
+
+            if (isEditModeGlobal) cancelEditMode();
+
+            google.script.run
+              .withSuccessHandler(function(newDb) {
+                DB = newDb || {};
+                renderPaginatedNilai();
+                triggerBatchForm();
+              })
+              .getTransactionalDataByContext(idKls, idPer, true);
+          } else {
+            Swal.fire('Gagal Menyimpan', res ? res.message : 'Terjadi kendala server.', 'error');
+          }
+        })
+        .withFailureHandler(function(err) {
+          hideL();
+          Swal.fire('Error Koneksi', err.message, 'error');
+        })
+        .saveBatchNilai(payloadRecords);
+    }
+
+    // Riwayat Nilai
+    function handleSearch(val) {
+      searchQueryNilai = (val || '').toLowerCase();
+      currentNilaiPage = 1;
+      renderPaginatedNilai();
+    }
+
+    function sortTable(col) {
+      if (sortColNilai === col) {
+        sortAscNilai = !sortAscNilai;
+      } else {
+        sortColNilai = col;
+        sortAscNilai = true;
+      }
+      renderPaginatedNilai();
+    }
+
+    function changeNilaiPage(delta) {
+      currentNilaiPage += delta;
+      renderPaginatedNilai();
+    }
+
+    function renderPaginatedNilai() {
+      let tbody = document.getElementById('nilaiTableBody');
+      let data = (DB.TransNilai || []).slice();
+
+      if (searchQueryNilai) {
+        data = data.filter(r => {
+          let s = (DB.MasterSiswa || []).find(x => String(x.id_siswa) === String(r.id_siswa));
+          let m = (DB.MasterMapel || []).find(x => String(x.id_mapel) === String(r.id_mapel));
+          let mat = (DB.MasterMateri || []).find(x => String(x.id_materi) === String(r.id_materi));
+
+          let strNama = s ? s.nama_siswa.toLowerCase() : '';
+          let strMap = m ? m.nama_mapel.toLowerCase() : '';
+          let strMat = mat ? mat.nama_materi.toLowerCase() : '';
+          let strGuru = String(r.id_guru || '').toLowerCase();
+
+          return strNama.includes(searchQueryNilai) || 
+                 strMap.includes(searchQueryNilai) || 
+                 strMat.includes(searchQueryNilai) ||
+                 strGuru.includes(searchQueryNilai);
+        });
+      }
+
+      data.sort((a, b) => {
+        let valA = a[sortColNilai] || '';
+        let valB = b[sortColNilai] || '';
+
+        if (sortColNilai === 'siswa') {
+          let sA = (DB.MasterSiswa || []).find(x => String(x.id_siswa) === String(a.id_siswa));
+          let sB = (DB.MasterSiswa || []).find(x => String(x.id_siswa) === String(b.id_siswa));
+          valA = sA ? sA.nama_siswa : '';
+          valB = sB ? sB.nama_siswa : '';
+        } else if (sortColNilai === 'mapel') {
+          let mA = (DB.MasterMapel || []).find(x => String(x.id_mapel) === String(a.id_mapel));
+          let mB = (DB.MasterMapel || []).find(x => String(x.id_mapel) === String(b.id_mapel));
+          valA = mA ? mA.nama_mapel : '';
+          valB = mB ? mB.nama_mapel : '';
+        } else if (sortColNilai === 'nilai') {
+          valA = parseFloat(valA) || 0;
+          valB = parseFloat(valB) || 0;
+        }
+
+        if (valA < valB) return sortAscNilai ? -1 : 1;
+        if (valA > valB) return sortAscNilai ? 1 : -1;
+        return 0;
+      });
+
+      let totalData = data.length;
+      let totalPages = Math.ceil(totalData / pageSizeNilai) || 1;
+      if (currentNilaiPage > totalPages) currentNilaiPage = totalPages;
+      if (currentNilaiPage < 1) currentNilaiPage = 1;
+
+      let start = (currentNilaiPage - 1) * pageSizeNilai;
+      let pageData = data.slice(start, start + pageSizeNilai);
+
+      let html = '';
+      if (pageData.length === 0) {
+        html = '<tr><td colspan="8" class="text-muted py-4">Tidak ada riwayat nilai yang ditemukan.</td></tr>';
+      } else {
+        pageData.forEach(r => {
+          let siswa = (DB.MasterSiswa || []).find(s => String(s.id_siswa) === String(r.id_siswa));
+          let mapel = (DB.MasterMapel || []).find(m => String(m.id_mapel) === String(r.id_mapel));
+          let jenis = (DB.MasterMBK || []).find(j => String(j.id_jenis) === String(r.id_jenis));
+          let materi = (DB.MasterMateri || []).find(m => String(m.id_materi) === String(r.id_materi));
+          
+          let katMateri = '';
+          if (materi) {
+            let kat = (DB.MasterKategoriPenilaian || []).find(k => String(k.id_kategori) === String(materi.id_kategori));
+            if (kat) katMateri = `<br><span class="badge bg-secondary text-wrap" style="font-size:10px;">${kat.nama_kategori}</span>`;
+          }
+
+          let namaUserAktif = (cUser.name || cUser.username || '').toLowerCase();
+          let pengisi = String(r.id_guru || '-');
+          let canManage = (cUser.role === 'admin') || (pengisi.toLowerCase() === namaUserAktif);
+
+          let aksiHtml = '';
+          if (canManage) {
+            aksiHtml = `
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-primary" onclick="editNil('${r.id_nilai}')" title="Edit Data">
+                  <i class="fa-solid fa-pen"></i>
+                </button>
+                <button class="btn btn-outline-danger" onclick="delNil('${r.id_nilai}')" title="Hapus Data">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </div>
+            `;
+          } else {
+            aksiHtml = `<span class="badge bg-light text-muted border"><i class="fa-solid fa-lock"></i> Terkunci</span>`;
+          }
+
+          html += `
+            <tr>
+              <td>${r.tanggal || '-'}</td>
+              <td class="text-start fw-bold text-dark">${siswa ? siswa.nama_siswa : r.id_siswa}</td>
+              <td>${mapel ? mapel.nama_mapel : r.id_mapel}</td>
+              <td><span class="badge bg-info text-dark">${jenis ? jenis.kategori_penilaian : r.id_jenis}</span></td>
+              <td class="text-start">${materi ? materi.nama_materi : (r.id_materi || '-')}${katMateri}</td>
+              <td><span class="fw-bold fs-6 text-primary">${r.nilai}</span></td>
+              <td><span class="badge bg-light text-secondary border">${pengisi}</span></td>
+              <td>${aksiHtml}</td>
+            </tr>
+          `;
+        });
+      }
+
+      tbody.innerHTML = html;
+      document.getElementById('pageIndicatorNilai').innerText = `Halaman ${currentNilaiPage} dari ${totalPages}`;
+      document.getElementById('btnPrevNilai').disabled = (currentNilaiPage === 1);
+      document.getElementById('btnNextNilai').disabled = (currentNilaiPage === totalPages);
+    }
+
+    function editNil(idNilai) {
+      let rec = (DB.TransNilai || []).find(n => String(n.id_nilai) === String(idNilai));
+      if (!rec) return Swal.fire('Error', 'Data nilai tidak ditemukan.', 'error');
+
+      let namaUserAktif = (cUser.name || cUser.username || '').toLowerCase();
+      let pengisi = String(rec.id_guru || '').toLowerCase();
+      if (cUser.role !== 'admin' && pengisi !== namaUserAktif) {
+        return Swal.fire('Akses Ditolak', 'Anda hanya dapat mengubah data nilai yang Anda rekam sendiri.', 'warning');
+      }
+
+      isEditModeGlobal = true;
+      editOriginalIdNilai = idNilai;
+      document.getElementById('editAlertBox').classList.remove('d-none');
+
+      document.getElementById('b_kelas').value = rec.id_kelas;
+      document.getElementById('b_mapel').value = rec.id_mapel;
+      document.getElementById('b_periode').value = rec.id_periode;
+      document.getElementById('b_jenis').value = rec.id_jenis;
+
+      let tglVal = rec.tanggal || '';
+      if (tglVal.includes('/')) {
+        let p = tglVal.split('/');
+        if (p.length === 3) tglVal = `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`;
+      } else if (tglVal.includes('T')) {
+        tglVal = tglVal.split('T')[0];
+      }
+      document.getElementById('b_tgl').value = tglVal;
+
+      updateMateriDropdown();
+      document.getElementById('b_materi').value = rec.id_materi;
+
+      triggerBatchForm();
+      document.getElementById('formAreaContainer').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cancelEditMode() {
+      isEditModeGlobal = false;
+      editOriginalIdNilai = null;
+      document.getElementById('editAlertBox').classList.add('d-none');
+      document.getElementById('b_materi').value = '';
+      triggerBatchForm();
+    }
+
+    function delNil(idNilai) {
+      let rec = (DB.TransNilai || []).find(n => String(n.id_nilai) === String(idNilai));
+      if (!rec) return;
+
+      let namaUserAktif = (cUser.name || cUser.username || '').toLowerCase();
+      let pengisi = String(rec.id_guru || '').toLowerCase();
+      if (cUser.role !== 'admin' && pengisi !== namaUserAktif) {
+        return Swal.fire('Akses Ditolak', 'Anda tidak memiliki otorisasi menghapus rekaman ini.', 'warning');
+      }
+
+      Swal.fire({
+        title: 'Hapus Rekaman Nilai?',
+        text: 'Data yang terhapus dari basis data tidak dapat dikembalikan.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Ya, Hapus Data',
+        cancelButtonText: 'Batal'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          showL("Menghapus data nilai...");
+          google.script.run
+            .withSuccessHandler(function(res) {
+              hideL();
+              if (res && res.success) {
+                Swal.fire({ icon: 'success', title: 'Terhapus', text: 'Data nilai berhasil dihapus.', timer: 1500, showConfirmButton: false });
+                let idKls = document.getElementById('b_kelas').value;
+                let idPer = document.getElementById('b_periode').value;
+                google.script.run
+                  .withSuccessHandler(function(newDb) {
+                    DB = newDb || {};
+                    renderPaginatedNilai();
+                    triggerBatchForm();
+                  })
+                  .getTransactionalDataByContext(idKls, idPer, true);
+              } else {
+                Swal.fire('Gagal Menghapus', res ? res.message : 'Kesalahan basis data.', 'error');
+              }
+            })
+            .withFailureHandler(function(err) {
+              hideL();
+              Swal.fire('Error', err.message, 'error');
+            })
+            .deleteMasterData('TransNilai', idNilai, 'id_nilai');
+        }
+      });
+    }
+
+    // TAHAP 3: EKSPOR TERPADU (CSV & PDF)
+    function exportData(format) {
+      let idKls = document.getElementById('b_kelas').value;
+      if (!idKls) {
+        return Swal.fire('Peringatan', 'Silakan pilih Kelas terlebih dahulu untuk mengekspor data.', 'warning');
+      }
+
+      let dataToExport = (DB.TransNilai || []).filter(n => String(n.id_kelas) === String(idKls));
+      if (dataToExport.length === 0) {
+        return Swal.fire('Informasi', 'Belum ada data nilai tercatat untuk kelas ini.', 'info');
+      }
+
+      let kelasObj = (DB.MasterKelas || []).find(k => String(k.id_kelas) === String(idKls));
+      let namaKelas = kelasObj ? kelasObj.nama_kelas : "Kelas";
+      let idPer = document.getElementById('b_periode').value;
+      let perObj = (DB.MasterPeriode || []).find(p => String(p.id_periode) === String(idPer));
+      let namaPeriode = perObj ? `${perObj.tahun_ajaran} (${perObj.semester})` : "-";
+      let sek = (DB.PengaturanSekolah && DB.PengaturanSekolah.length > 0) ? DB.PengaturanSekolah[0] : {
+        nama_sekolah: "SEKOLAH PENGGERAK",
+        alamat_sekolah: "Jalan Pendidikan No. 1",
+        kota: "Nabire",
+        nama_kepsek: "Kepala Sekolah, M.Pd.",
+        nip_kepsek: "-"
+      };
+
+      if (format === 'csv') {
+        let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+        csvContent += "Tanggal,Kelas,NISN,Nama Siswa,Mata Pelajaran,KKM,Jenis Penilaian,Topik / Materi,Kategori STNKM,Nilai,Status Ketuntasan,Pengisi Data\n";
+
+        dataToExport.forEach(r => {
+          let s = (DB.MasterSiswa || []).find(x => String(x.id_siswa) === String(r.id_siswa));
+          let m = (DB.MasterMapel || []).find(x => String(x.id_mapel) === String(r.id_mapel));
+          let j = (DB.MasterMBK || []).find(x => String(x.id_jenis) === String(r.id_jenis));
+          let mat = (DB.MasterMateri || []).find(x => String(x.id_materi) === String(r.id_materi));
+
+          let kkmVal = m && m.kkm ? parseFloat(m.kkm) : 75;
+          let valNum = parseFloat(r.nilai) || 0;
+          let statusKet = (valNum >= kkmVal) ? "TUNTAS" : "BELUM TUNTAS";
+
+          let katSTNKM = "-";
+          if (mat) {
+            let kObj = (DB.MasterKategoriPenilaian || []).find(k => String(k.id_kategori) === String(mat.id_kategori));
+            if (kObj) katSTNKM = kObj.nama_kategori;
+          }
+
+          let tglStr = `"${r.tanggal || '-'}"`;
+          let klsStr = `"${namaKelas}"`;
+          let nisnStr = `"${r.id_siswa || '-'}"`;
+          let nmStr = `"${(s ? s.nama_siswa : r.id_siswa).replace(/"/g, '""')}"`;
+          let mapStr = `"${(m ? m.nama_mapel : r.id_mapel).replace(/"/g, '""')}"`;
+          let kkmStr = `"${kkmVal}"`;
+          let jnsStr = `"${(j ? j.kategori_penilaian : r.id_jenis).replace(/"/g, '""')}"`;
+          let matStr = `"${(mat ? mat.nama_materi : (r.id_materi || '-')).replace(/"/g, '""')}"`;
+          let katStr = `"${katSTNKM.replace(/"/g, '""')}"`;
+          let nilStr = `"${r.nilai}"`;
+          let statStr = `"${statusKet}"`;
+          let guruStr = `"${(r.id_guru || '-').replace(/"/g, '""')}"`;
+
+          csvContent += [tglStr, klsStr, nisnStr, nmStr, mapStr, kkmStr, jnsStr, matStr, katStr, nilStr, statStr, guruStr].join(",") + "\n";
+        });
+
+        let encodedUri = encodeURI(csvContent);
+        let link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `Rekap_Nilai_${namaKelas.replace(/\s+/g, '_')}_${new Date().getTime()}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else if (format === 'pdf') {
+        showL("Mempersiapkan Dokumen Cetak...");
+        let printWin = window.open('', '', 'width=1100,height=850');
+        let today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
+        let totalRec = dataToExport.length;
+        let sumNil = dataToExport.reduce((acc, cur) => acc + (parseFloat(cur.nilai) || 0), 0);
+        let avgNil = totalRec > 0 ? (sumNil / totalRec).toFixed(1) : 0;
+        let maxNil = totalRec > 0 ? Math.max(...dataToExport.map(x => parseFloat(x.nilai) || 0)) : 0;
+        let minNil = totalRec > 0 ? Math.min(...dataToExport.map(x => parseFloat(x.nilai) || 0)) : 0;
+
+        let tableRowsHtml = '';
+        dataToExport.forEach((r, idx) => {
+          let s = (DB.MasterSiswa || []).find(x => String(x.id_siswa) === String(r.id_siswa));
+          let m = (DB.MasterMapel || []).find(x => String(x.id_mapel) === String(r.id_mapel));
+          let j = (DB.MasterMBK || []).find(x => String(x.id_jenis) === String(r.id_jenis));
+          let mat = (DB.MasterMateri || []).find(x => String(x.id_materi) === String(r.id_materi));
+
+          let kkmVal = m && m.kkm ? parseFloat(m.kkm) : 75;
+          let valNum = parseFloat(r.nilai) || 0;
+          let statusKet = (valNum >= kkmVal) ? '<b style="color:green;">TUNTAS</b>' : '<b style="color:red;">BELUM TUNTAS</b>';
+
+          let katSTNKM = "-";
+          if (mat) {
+            let kObj = (DB.MasterKategoriPenilaian || []).find(k => String(k.id_kategori) === String(mat.id_kategori));
+            if (kObj) katSTNKM = kObj.nama_kategori;
+          }
+
+          tableRowsHtml += `
+            <tr>
+              <td align="center">${idx + 1}</td>
+              <td align="center">${r.tanggal || '-'}</td>
+              <td>${s ? s.nama_siswa : r.id_siswa}<br><small style="color:#666;">NISN: ${r.id_siswa || '-'}</small></td>
+              <td>${m ? m.nama_mapel : r.id_mapel}</td>
+              <td align="center">${j ? j.kategori_penilaian : r.id_jenis}</td>
+              <td>${mat ? mat.nama_materi : '-'}<br><small style="color:#0056b3; font-style:italic;">Dimensi: ${katSTNKM}</small></td>
+              <td align="center">${kkmVal}</td>
+              <td align="center"><b>${r.nilai}</b></td>
+              <td align="center">${statusKet}</td>
+              <td align="center"><small>${r.id_guru || '-'}</small></td>
+            </tr>
+          `;
+        });
+
+        let printHtml = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>Laporan Rekapitulasi Nilai - ${namaKelas}</title>
+            <style>
+              @page { size: landscape; margin: 12mm; }
+              body { font-family: 'Times New Roman', Times, serif; color: #000; font-size: 11px; margin: 0; padding: 0; }
+              table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+              th, td { border: 1px solid #000; padding: 5px 6px; vertical-align: middle; }
+              th { background-color: #f2f2f2; text-align: center; font-weight: bold; }
+              .kop-container { border: none !important; padding: 0 0 10px 0; }
+              .kop-surat { text-align: center; border-bottom: 2.5px solid #000; padding-bottom: 8px; margin-bottom: 8px; }
+              .kop-surat h3 { margin: 0; font-size: 18px; text-transform: uppercase; letter-spacing: 0.5px; }
+              .kop-surat h4 { margin: 4px 0 0 0; font-size: 13px; text-transform: uppercase; font-weight: bold; }
+              .kop-surat p { margin: 3px 0 0 0; font-size: 11px; font-weight: normal; }
+              .stat-box-container { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 11px; }
+              .stat-box { border: 1px solid #777; padding: 4px 8px; border-radius: 4px; background: #fafafa; }
+              .ttd-table { width: 100%; border: none; margin-top: 25px; }
+              .ttd-table td { border: none; text-align: center; font-size: 11px; }
+              thead { display: table-header-group; }
+              tfoot { display: table-footer-group; }
+              tr { page-break-inside: avoid; }
+            </style>
+          </head>
+          <body>
+            <table>
+              <thead>
+                <tr>
+                  <th colspan="10" class="kop-container">
+                    <div class="kop-surat">
+                      <h3>${sek.nama_sekolah}</h3>
+                      <p>${sek.alamat_sekolah} &bull; NPSN: ${sek.npsn || '-'}</p>
+                      <h4>LEMBAR REKAPITULASI CAPAIAN NILAI AKADEMIK & MATRIKS STNKM</h4>
+                      <p><b>Kelas:</b> ${namaKelas} &nbsp;|&nbsp; <b>Periode Akademik:</b> ${namaPeriode} &nbsp;|&nbsp; <b>Tanggal Cetak:</b> ${today}</p>
+                    </div>
+                    <div class="stat-box-container">
+                      <div class="stat-box"><b>Total Nilai Tercatat:</b> ${totalRec} Entri</div>
+                      <div class="stat-box"><b>Rata-rata Kelas:</b> ${avgNil}</div>
+                      <div class="stat-box"><b>Nilai Tertinggi:</b> ${maxNil}</div>
+                      <div class="stat-box"><b>Nilai Terendah:</b> ${minNil}</div>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th width="4%">No</th>
+                  <th width="9%">Tanggal</th>
+                  <th width="19%">Nama Siswa</th>
+                  <th width="14%">Mata Pelajaran</th>
+                  <th width="8%">Jenis</th>
+                  <th width="20%">Materi & Kategori STNKM</th>
+                  <th width="5%">KKM</th>
+                  <th width="6%">Nilai</th>
+                  <th width="8%">Ketuntasan</th>
+                  <th width="7%">Pengisi</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${tableRowsHtml}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="10" style="border:none; padding-top: 20px;">
+                    <table class="ttd-table">
+                      <tr>
+                        <td width="50%">
+                          Mengetahui,<br>Kepala Sekolah<br><br><br><br><br>
+                          <u><b>${sek.nama_kepsek}</b></u><br>
+                          NIP. ${sek.nip_kepsek}
+                        </td>
+                        <td width="50%">
+                          ${sek.kota || 'Nabire'}, ${today}<br>Guru Mata Pelajaran / Wali Kelas<br><br><br><br><br>
+                          <u><b>${cUser.name || 'Guru Pengampu'}</b></u><br>
+                          NIP. -
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+            <script>
+              window.onload = function() {
+                window.print();
+              };
+            <\/script>
+          </body>
+          </html>
+        `;
+
+        printWin.document.open();
+        printWin.document.write(printHtml);
+        printWin.document.close();
+        hideL();
+      }
+    }
+  </script>
+</body>
+</html>

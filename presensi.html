@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Presensi Harian - EduRapor</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #f4f6f9; font-family: sans-serif; }
+    #loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.95); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+    .sortable { cursor: pointer; user-select: none; transition: background-color 0.2s; }
+    .sortable:hover { background-color: #e2e6ea !important; }
+  </style>
+</head>
+<body>
+
+  <div id="loadingOverlay">
+    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div>
+    <h5 class="mt-3 text-muted" id="loadingText">Menyiapkan Modul Presensi...</h5>
+  </div>
+
+  <script>const SCRIPT_URL = "<?= scriptUrl ?>";</script>
+  <?!= include('navbar'); ?>
+
+  <div class="container mt-4 mb-5">
+    <h3 class="mb-4">Catat Presensi Kelas (Massal)</h3>
+    <div class="card p-4 shadow-sm mb-4 border-top border-info border-4">
+      
+      <!-- Filter Kelas & Tanggal -->
+      <div class="row mb-4 bg-light p-3 rounded border">
+        <div class="col-md-4">
+          <label class="fw-bold text-primary">Pilih Kelas</label>
+          <select class="form-select border-primary" id="p_kelas" onchange="onFilterChange()"></select>
+        </div>
+        <div class="col-md-4">
+          <label class="fw-bold text-primary">Periode</label>
+          <select class="form-select border-primary" id="p_periode" onchange="onFilterChange()"></select>
+        </div>
+        <div class="col-md-4">
+          <label class="fw-bold text-primary">Tanggal</label>
+          <input type="date" class="form-control border-primary" id="p_tgl" onchange="triggerBatchForm()" required>
+        </div>
+      </div>
+
+      <!-- Daftar Siswa Dinamis -->
+      <form onsubmit="handlePresensiBatchSubmit(event)" id="formPresensiList" class="d-none">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle border">
+            <thead class="table-dark">
+              <tr>
+                <th width="5%" class="text-center">No</th>
+                <th width="35%">Nama Siswa</th>
+                <th width="60%" class="text-center">Status Kehadiran</th>
+              </tr>
+            </thead>
+            <tbody id="presensiBatchBody"></tbody>
+          </table>
+        </div>
+        <div class="text-end mt-3">
+          <button type="submit" class="btn btn-lg btn-success" id="btnSubmitPresensi"><i class="fa-solid fa-save"></i> Simpan Presensi Kelas</button>
+        </div>
+      </form>
+
+      <!-- Pesan Kosong -->
+      <div id="presensiEmptyMsg" class="text-center text-muted mt-3 py-4">
+        <i class="fa-solid fa-users fa-3x mb-3 opacity-50"></i>
+        <h5>Pilih Kelas dan Periode untuk memuat daftar siswa.</h5>
+      </div>
+    </div>
+    
+    <!-- Tabel Riwayat -->
+    <h5 class="mt-5 mb-3 fw-bold"><i class="fa-solid fa-list-check"></i> Riwayat Presensi (Kelas Ini)</h5>
+    <div class="card shadow-sm p-3 border-0 rounded-4">
+      
+      <!-- BARIS PENCARIAN & EKSPOR -->
+      <div class="row mb-3 align-items-center">
+        <div class="col-md-6 mb-2">
+          <div class="input-group">
+            <span class="input-group-text bg-white text-info border-info"><i class="fa-solid fa-magnifying-glass"></i></span>
+            <input type="text" class="form-control border-info" id="searchPresensiInput" placeholder="Cari nama siswa, status, atau tanggal..." oninput="handlePresensiSearch(this.value)">
+          </div>
+        </div>
+        <div class="col-md-6 mb-2 text-md-end">
+          <button class="btn btn-outline-success me-2" onclick="exportPresensiData('csv')"><i class="fa-solid fa-file-csv"></i> Ekspor CSV</button>
+          <button class="btn btn-outline-danger" onclick="exportPresensiData('pdf')"><i class="fa-solid fa-file-pdf"></i> Cetak PDF</button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover text-center align-middle">
+          <thead class="table-secondary" id="presensiThead">
+            <!-- Header disuntikkan secara dinamis oleh JS untuk fitur sortir -->
+          </thead>
+          <tbody id="presensiTableBody"></tbody>
+        </table>
+      </div>
+      
+      <!-- Paginasi Presensi -->
+      <div class="d-flex justify-content-between align-items-center mt-3">
+        <button class="btn btn-sm btn-outline-primary" id="btnPrevPresensi" onclick="changePresensiPage(-1)"><i class="fa-solid fa-chevron-left"></i> Sebelumnya</button>
+        <span id="pageIndicatorPresensi" class="text-muted fw-bold">Halaman 1</span>
+        <button class="btn btn-sm btn-outline-primary" id="btnNextPresensi" onclick="changePresensiPage(1)">Selanjutnya <i class="fa-solid fa-chevron-right"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <script>
+    let failsafeTimer = setTimeout(() => {
+      let overlay = document.getElementById('loadingOverlay');
+      if (overlay) overlay.style.display = 'none';
+    }, 5000);
+
+    try {
+      let cUser = JSON.parse(sessionStorage.getItem('eduUser'));
+      if (!cUser || !cUser.name) {
+        window.top.location.href = SCRIPT_URL + "?page=login";
+      } else {
+        if (cUser.role === 'siswa') window.top.location.href = SCRIPT_URL + "?page=dashboard";
+        jalankanPresensi(); 
+      }
+    } catch (fatalError) {
+      document.getElementById('loadingOverlay').style.display = 'none';
+      Swal.fire('Error Sesi', 'Sesi tidak valid. Harap login ulang.', 'error');
+    }
+
+    const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 });
+
+    let DB = {};
+    let currentBatchPresensi = [];
+    let currentPresensiPage = 1;
+    const rowsPerPage = 10;
+    
+    let searchPresensiQuery = "";
+    let sortPresensiColumn = "tanggal"; 
+    let sortPresensiAscending = false; 
+    let currentContext = { kelas: "", periode: "" };
+
+    let appState = JSON.parse(sessionStorage.getItem('eduAppState')) || {};
+    function saveState(key, value) {
+      appState[key] = value;
+      sessionStorage.setItem('eduAppState', JSON.stringify(appState));
+    }
+
+    function jalankanPresensi() { loadData(); }
+    function showL(t="Memproses...") { document.getElementById('loadingText').innerText = t; document.getElementById('loadingOverlay').style.display = 'flex'; }
+    function hideL() { document.getElementById('loadingOverlay').style.display = 'none'; }
+
+    function loadData() {
+      showL("Memuat Data Referensi...");
+      google.script.run
+        .withSuccessHandler(res => { 
+          clearTimeout(failsafeTimer);
+          DB = res || {}; 
+          updateUI(); 
+          hideL(); 
+        })
+        .withFailureHandler(err => { hideL(); Swal.fire('Error Database', err.message, 'error'); })
+        .getMasterReferences();
+    }
+
+    const buildOpt = (tbl, idF, nmF) => { 
+      let h = '<option value="">- Pilih -</option>'; 
+      (DB[tbl]||[]).forEach(r => h += `<option value="${r[idF]}">${r[nmF]}</option>`); 
+      return h; 
+    };
+
+    function updateUI() {
+      let elKelasP = document.getElementById('p_kelas');
+      if(elKelasP && !elKelasP.value) {
+        elKelasP.innerHTML = buildOpt('MasterKelas', 'id_kelas', 'nama_kelas');
+        if(appState.kelas_prs) elKelasP.value = appState.kelas_prs;
+      }
+      
+      let elPeriodeP = document.getElementById('p_periode');
+      if(elPeriodeP && !elPeriodeP.value) {
+        let optPeriode = '<option value="">- Pilih Periode -</option>';
+        let idPeriodeAktif = '';
+        (DB.MasterPeriode || []).forEach(p => {
+          let sel = '';
+          if (p.status_aktif === 'AKTIF') { sel = 'selected'; idPeriodeAktif = p.id_periode; }
+          optPeriode += `<option value="${p.id_periode}" ${sel}>${p.tahun_ajaran} (Smt ${p.semester})</option>`;
+        });
+        elPeriodeP.innerHTML = optPeriode;
+        
+        if(appState.periode_prs) {
+            elPeriodeP.value = appState.periode_prs;
+        } else if (idPeriodeAktif) {
+            elPeriodeP.value = idPeriodeAktif;
+        }
+      }
+
+      let elTglP = document.getElementById('p_tgl');
+      if(elTglP && !elTglP.value && appState.tanggal_prs) elTglP.value = appState.tanggal_prs;
+
+      onFilterChange();
+    }
+
+    function onFilterChange() {
+      let idKls = document.getElementById('p_kelas').value;
+      let idPer = document.getElementById('p_periode').value;
+
+      if(idKls) saveState('kelas_prs', idKls);
+      if(idPer) saveState('periode_prs', idPer);
+
+      if (idKls && idPer) {
+        if (currentContext.kelas !== idKls || currentContext.periode !== idPer) {
+           showL("Mengambil data kehadiran kelas...");
+           google.script.run
+             .withSuccessHandler(res => {
+                DB = res || {}; 
+                currentContext = { kelas: idKls, periode: idPer };
+                hideL();
+                triggerBatchForm();
+                renderPresensiTable();
+             })
+             .withFailureHandler(err => { hideL(); Swal.fire('Error Jaringan', err.message, 'error'); })
+             .getTransactionalDataByContext(idKls, idPer, false);
+           return; 
+        }
+      } else {
+        DB.TransPresensi = []; 
+        currentContext = { kelas: "", periode: "" };
+        renderPresensiTable();
+      }
+
+      triggerBatchForm();
+    }
+
+    function refreshContextData() {
+       currentContext = { kelas: "", periode: "" }; 
+       onFilterChange();
+    }
+
+    function triggerBatchForm() {
+      let idKls = document.getElementById('p_kelas').value;
+      let idPer = document.getElementById('p_periode').value;
+      let tgl = document.getElementById('p_tgl').value;
+      
+      if(tgl) saveState('tanggal_prs', tgl);
+      
+      let formList = document.getElementById('formPresensiList');
+      let emptyMsg = document.getElementById('presensiEmptyMsg');
+      
+      if(!idKls || !idPer || !tgl) { formList.classList.add('d-none'); emptyMsg.classList.remove('d-none'); return; }
+      
+      let siswaKelas = (DB.MasterSiswa || []).filter(s => String(s.id_kelas) === String(idKls));
+      if(siswaKelas.length === 0) {
+        emptyMsg.innerHTML = "<h5>Tidak ada siswa terdaftar di kelas ini.</h5>";
+        formList.classList.add('d-none'); emptyMsg.classList.remove('d-none'); return;
+      }
+
+      let tbody = "";
+      currentBatchPresensi = [];
+      let riwayatHariIni = (DB.TransPresensi || []).filter(p => p.tanggal == tgl && p.id_kelas == idKls && p.id_periode == idPer);
+
+      siswaKelas.forEach((s, index) => {
+        let rekamLama = riwayatHariIni.find(r => String(r.id_siswa) === String(s.id_siswa));
+        let status = rekamLama ? rekamLama.status_kehadiran : 'Hadir'; 
+        let idPres = rekamLama ? rekamLama.id_presensi : '';
+        
+        currentBatchPresensi.push({ id_siswa: s.id_siswa, id_presensi_lama: idPres });
+
+        let rHadir = status === 'Hadir' ? 'checked' : ''; let rSakit = status === 'Sakit' ? 'checked' : '';
+        let rIzin = status === 'Izin' ? 'checked' : ''; let rAlpa = status === 'Alpa' ? 'checked' : '';
+        
+        let linkProfil = `<a href="#" onclick="window.top.location.href = SCRIPT_URL + '?page=profil&tipe=siswa&id=${s.id_siswa}'" class="fw-bold text-decoration-none text-primary">${s.nama_siswa}</a>`;
+
+        tbody += `<tr>
+          <td class="text-center fw-bold">${index + 1}</td>
+          <td class="text-start">${linkProfil}</td>
+          <td class="text-center">
+            <div class="btn-group w-100" role="group">
+              <input type="radio" class="btn-check" name="st_${s.id_siswa}" id="h_${s.id_siswa}" value="Hadir" ${rHadir}>
+              <label class="btn btn-outline-success" for="h_${s.id_siswa}">Hadir</label>
+              <input type="radio" class="btn-check" name="st_${s.id_siswa}" id="s_${s.id_siswa}" value="Sakit" ${rSakit}>
+              <label class="btn btn-outline-warning" for="s_${s.id_siswa}">Sakit</label>
+              <input type="radio" class="btn-check" name="st_${s.id_siswa}" id="i_${s.id_siswa}" value="Izin" ${rIzin}>
+              <label class="btn btn-outline-info" for="i_${s.id_siswa}">Izin</label>
+              <input type="radio" class="btn-check" name="st_${s.id_siswa}" id="a_${s.id_siswa}" value="Alpa" ${rAlpa}>
+              <label class="btn btn-outline-danger" for="a_${s.id_siswa}">Alpa</label>
+            </div>
+          </td>
+        </tr>`;
+      });
+      document.getElementById('presensiBatchBody').innerHTML = tbody;
+      formList.classList.remove('d-none'); emptyMsg.classList.add('d-none');
+    }
+
+    function handlePresensiBatchSubmit(e) {
+      e.preventDefault(); showL("Menyimpan Data Kelas...");
+      let idKls = document.getElementById('p_kelas').value; 
+      let idPer = document.getElementById('p_periode').value; 
+      let tgl = document.getElementById('p_tgl').value;
+      
+      let recordsToSave = currentBatchPresensi.map(item => {
+        let selectedStatus = document.querySelector(`input[name="st_${item.id_siswa}"]:checked`).value;
+        return { id_presensi: item.id_presensi_lama, tanggal: tgl, id_siswa: item.id_siswa, id_kelas: idKls, id_periode: idPer, status_kehadiran: selectedStatus };
+      });
+
+      google.script.run
+        .withSuccessHandler(r => { 
+            if(r.success) { 
+                refreshContextData();
+                Toast.fire({icon:'success',title:r.message}); 
+            } else { 
+                hideL(); Swal.fire('Gagal', r.message, 'error'); 
+            } 
+        })
+        .withFailureHandler(err => { hideL(); alert(err); })
+        .savePresensiBatch(recordsToSave);
+    }
+
+    function handlePresensiSearch(val) {
+      searchPresensiQuery = val.toLowerCase();
+      currentPresensiPage = 1;
+      renderPresensiTable();
+    }
+
+    function sortPresensiTable(colName) {
+      if (sortPresensiColumn === colName) {
+        sortPresensiAscending = !sortPresensiAscending;
+      } else {
+        sortPresensiColumn = colName;
+        sortPresensiAscending = true;
+      }
+      renderPresensiTable();
+    }
+
+    function renderPresensiTable() {
+      let cols = [ {id: 'tanggal', label: 'Tanggal'}, {id: 'siswa', label: 'Siswa'}, {id: 'kelas', label: 'Kelas'}, {id: 'status', label: 'Status'} ];
+      let thHtml = cols.map(c => {
+        let icon = "fa-sort text-muted opacity-50";
+        if (sortPresensiColumn === c.id) icon = sortPresensiAscending ? "fa-sort-up text-primary" : "fa-sort-down text-primary";
+        let align = c.id === 'siswa' ? 'text-start' : '';
+        return `<th class="sortable text-nowrap ${align}" onclick="sortPresensiTable('${c.id}')">${c.label} <i class="fa-solid ${icon} ms-1"></i></th>`;
+      }).join("") + "<th>Aksi</th>";
+      document.getElementById('presensiThead').innerHTML = `<tr>${thHtml}</tr>`;
+
+      let tableData = (DB.TransPresensi || []).slice();
+      
+      if (searchPresensiQuery !== "") {
+        tableData = tableData.filter(p => {
+          let nSis = (DB.MasterSiswa?.find(s=>s.id_siswa==p.id_siswa)?.nama_siswa || "").toLowerCase();
+          let nKls = (DB.MasterKelas?.find(k=>k.id_kelas==p.id_kelas)?.nama_kelas || "").toLowerCase();
+          let stat = (p.status_kehadiran || "").toLowerCase();
+          let tgl = (p.tanggal || "").toLowerCase();
+          return nSis.includes(searchPresensiQuery) || nKls.includes(searchPresensiQuery) || stat.includes(searchPresensiQuery) || tgl.includes(searchPresensiQuery);
+        });
+      }
+
+      tableData.sort((a, b) => {
+        let valA, valB;
+        if (sortPresensiColumn === 'tanggal') {
+          valA = new Date(a.tanggal || 0); valB = new Date(b.tanggal || 0);
+        } else if (sortPresensiColumn === 'siswa') {
+          valA = DB.MasterSiswa?.find(s => s.id_siswa == a.id_siswa)?.nama_siswa || '';
+          valB = DB.MasterSiswa?.find(s => s.id_siswa == b.id_siswa)?.nama_siswa || '';
+        } else if (sortPresensiColumn === 'kelas') {
+          valA = DB.MasterKelas?.find(k => k.id_kelas == a.id_kelas)?.nama_kelas || '';
+          valB = DB.MasterKelas?.find(k => k.id_kelas == b.id_kelas)?.nama_kelas || '';
+        } else if (sortPresensiColumn === 'status') {
+          valA = a.status_kehadiran || ''; valB = b.status_kehadiran || '';
+        }
+
+        if (valA < valB) return sortPresensiAscending ? -1 : 1;
+        if (valA > valB) return sortPresensiAscending ? 1 : -1;
+        return 0;
+      });
+      
+      let totalPages = Math.ceil(tableData.length / rowsPerPage) || 1;
+      if(currentPresensiPage > totalPages) currentPresensiPage = totalPages;
+      if(currentPresensiPage < 1) currentPresensiPage = 1;
+
+      let start = (currentPresensiPage - 1) * rowsPerPage;
+      let paginatedData = tableData.slice(start, start + rowsPerPage);
+      
+      let pBody = "";
+      paginatedData.forEach(p => {
+        let rawSiswaNama = DB.MasterSiswa?.find(s => s.id_siswa == p.id_siswa)?.nama_siswa || p.id_siswa;
+        let nSis = `<a href="#" onclick="window.top.location.href = SCRIPT_URL + '?page=profil&tipe=siswa&id=${p.id_siswa}'" class="text-decoration-none fw-bold text-primary">${rawSiswaNama}</a>`;
+        let nKls = DB.MasterKelas?.find(k => k.id_kelas == p.id_kelas)?.nama_kelas || p.id_kelas;
+        let badgeColor = p.status_kehadiran === 'Hadir' ? 'bg-success' : p.status_kehadiran === 'Sakit' ? 'bg-warning text-dark' : p.status_kehadiran === 'Izin' ? 'bg-info text-dark' : 'bg-danger';
+
+        pBody += `<tr>
+          <td>${p.tanggal}</td><td class="text-start">${nSis}</td><td>${nKls}</td>
+          <td><span class="badge ${badgeColor}">${p.status_kehadiran}</span></td>
+          <td>
+            <button class="btn btn-sm btn-warning" onclick="editPresensiRow('${p.id_kelas}', '${p.id_periode}', '${p.tanggal}')" title="Edit Data Kelas Ini"><i class="fa-solid fa-pen"></i> Edit</button>
+          </td>
+        </tr>`;
+      });
+      
+      if (tableData.length === 0) {
+         let infoText = (document.getElementById('p_kelas').value && document.getElementById('p_periode').value) 
+            ? 'Belum ada data presensi.' 
+            : 'Pilih Kelas dan Periode di atas untuk melihat riwayat presensi.';
+         pBody = `<tr><td colspan="5" class="text-muted py-4">${infoText}</td></tr>`;
+      }
+
+      document.getElementById('presensiTableBody').innerHTML = pBody;
+      document.getElementById('pageIndicatorPresensi').innerText = `Halaman ${currentPresensiPage} dari ${totalPages}`;
+      document.getElementById('btnPrevPresensi').disabled = (currentPresensiPage === 1);
+      document.getElementById('btnNextPresensi').disabled = (currentPresensiPage === totalPages);
+    }
+
+    function changePresensiPage(direction) {
+      currentPresensiPage += direction;
+      renderPresensiTable();
+    }
+
+    function editPresensiRow(idKelas, idPeriode, tgl) {
+      if(tgl && tgl.includes('/')) {
+        let parts = tgl.split('/');
+        if(parts.length === 3) tgl = `${parts[2]}-${parts[1]}-${parts[0]}`;
+      }
+      document.getElementById('p_kelas').value = idKelas;
+      document.getElementById('p_periode').value = idPeriode;
+      document.getElementById('p_tgl').value = tgl;
+      onFilterChange(); 
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // 7. Ekspor Data (DIPERBARUI KE NATIVE PRINT ENGINE)
+    function exportPresensiData(format) {
+      let dataToExport = (DB.TransPresensi || []).slice();
+      let sek = (DB.PengaturanSekolah && DB.PengaturanSekolah.length > 0) ? DB.PengaturanSekolah[0] : { nama_sekolah: 'Sekolah', alamat_sekolah: '-', kota: '-', nama_kepsek: 'Kepala Sekolah', nip_kepsek: '-' };
+      
+      if(searchPresensiQuery !== "") {
+         dataToExport = dataToExport.filter(p => {
+            let nSis = (DB.MasterSiswa?.find(s=>s.id_siswa==p.id_siswa)?.nama_siswa || "").toLowerCase();
+            let nKls = (DB.MasterKelas?.find(k=>k.id_kelas==p.id_kelas)?.nama_kelas || "").toLowerCase();
+            let stat = (p.status_kehadiran || "").toLowerCase();
+            let tgl = (p.tanggal || "").toLowerCase();
+            return nSis.includes(searchPresensiQuery) || nKls.includes(searchPresensiQuery) || stat.includes(searchPresensiQuery) || tgl.includes(searchPresensiQuery);
+         });
+      }
+
+      if(dataToExport.length === 0) return Swal.fire('Kosong', 'Tidak ada data untuk diekspor.', 'info');
+
+      // Pastikan urutan saat diekspor sama dengan urutan di layar
+      dataToExport.sort((a, b) => {
+        let valA, valB;
+        if (sortPresensiColumn === 'tanggal') { valA = new Date(a.tanggal||0); valB = new Date(b.tanggal||0); }
+        else if (sortPresensiColumn === 'siswa') { valA = DB.MasterSiswa?.find(s=>s.id_siswa==a.id_siswa)?.nama_siswa||''; valB = DB.MasterSiswa?.find(s=>s.id_siswa==b.id_siswa)?.nama_siswa||''; }
+        else if (sortPresensiColumn === 'kelas') { valA = DB.MasterKelas?.find(k=>k.id_kelas==a.id_kelas)?.nama_kelas||''; valB = DB.MasterKelas?.find(k=>k.id_kelas==b.id_kelas)?.nama_kelas||''; }
+        else if (sortPresensiColumn === 'status') { valA = a.status_kehadiran||''; valB = b.status_kehadiran||''; }
+        if (valA < valB) return sortPresensiAscending ? -1 : 1;
+        if (valA > valB) return sortPresensiAscending ? 1 : -1;
+        return 0;
+      });
+
+      let exportRows = dataToExport.map(p => {
+         let nSis = DB.MasterSiswa?.find(s=>s.id_siswa==p.id_siswa)?.nama_siswa || p.id_siswa;
+         let nKls = DB.MasterKelas?.find(k=>k.id_kelas==p.id_kelas)?.nama_kelas || p.id_kelas;
+         return { Tanggal: p.tanggal, Siswa: nSis, Kelas: nKls, Status: p.status_kehadiran };
+      });
+
+      if(format === 'csv') {
+        let csvContent = "data:text/csv;charset=utf-8,Tanggal,Siswa,Kelas,Status\n";
+        exportRows.forEach(r => { csvContent += `"${r.Tanggal}","${r.Siswa}","${r.Kelas}","${r.Status}"\n`; });
+        let encodedUri = encodeURI(csvContent);
+        let link = document.createElement("a"); link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `Ekspor_Presensi_${new Date().getTime()}.csv`);
+        document.body.appendChild(link); link.click(); document.body.removeChild(link);
+      } 
+      else if (format === 'pdf') {
+         let printWin = window.open('', '', 'width=1024,height=768');
+         let today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+         
+         let html = `<html><head><title>Laporan Presensi Siswa</title>
+           <style> 
+             @page { size: portrait; margin: 15mm; }
+             body { font-family: 'Times New Roman', Times, serif; color: #000; font-size: 12px; }
+             table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+             th, td { border: 1px solid #000; padding: 6px 8px; text-align: left; }
+             th { background-color: #f0f0f0; text-align: center; font-weight: bold; }
+             .kop-surat-container { background-color: #fff; border: none; padding: 0 0 20px 0; }
+             .kop-surat { text-align: center; border-bottom: 3px solid #000; padding-bottom: 10px; }
+             .kop-surat h3 { margin: 0; font-size: 20px; text-transform: uppercase; }
+             .kop-surat p { margin: 5px 0 0 0; font-size: 14px; font-weight: normal; }
+             .ttd-box { width: 250px; float: right; text-align: center; margin-top: 30px; font-size: 14px;}
+             thead { display: table-header-group; }
+             tfoot { display: table-footer-group; }
+             tr { page-break-inside: avoid; }
+           </style></head><body>
+           
+           <table>
+             <thead>
+               <tr>
+                 <th colspan="4" class="kop-surat-container">
+                   <div class="kop-surat">
+                     <h3>LAPORAN HISTORIS PRESENSI KELAS</h3>
+                     <p>${sek.nama_sekolah} | ${sek.alamat_sekolah}</p>
+                   </div>
+                 </th>
+               </tr>
+               <tr>
+                 <th width="15%">Tanggal</th>
+                 <th width="45%">Nama Siswa</th>
+                 <th width="20%">Kelas</th>
+                 <th width="20%">Status</th>
+               </tr>
+             </thead>
+             <tbody>`;
+             
+         exportRows.forEach(r => { 
+           html += `<tr>
+                     <td style="text-align:center;">${r.Tanggal}</td>
+                     <td>${r.Siswa}</td>
+                     <td style="text-align:center;">${r.Kelas}</td>
+                     <td style="text-align:center; font-weight:bold;">${r.Status}</td>
+                   </tr>`; 
+         });
+         
+         html += `
+             </tbody>
+             <tfoot>
+               <tr>
+                 <td colspan="4" style="border: none; padding: 0;">
+                   <div class="ttd-box">
+                     ${sek.kota}, ${today}<br>Kepala Sekolah<br><br><br><br><br>
+                     <strong>${sek.nama_kepsek}</strong><br>NIP. ${sek.nip_kepsek}
+                   </div>
+                 </td>
+               </tr>
+             </tfoot>
+           </table>
+           </body></html>`;
+           
+         printWin.document.write(html); 
+         printWin.document.close(); 
+         printWin.focus();
+         setTimeout(() => { printWin.print(); printWin.close(); }, 800);
+      }
+    }
+  </script>
+</body>
+</html>
