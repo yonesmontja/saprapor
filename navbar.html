@@ -108,7 +108,7 @@
             <i class="fa-solid fa-file-contract me-1"></i>Cetak
           </a>
           <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0" aria-labelledby="navbarDropdownRapor">
-            <li><a class="dropdown-item py-2 fw-bold" href="#" onclick="navTo('rapor')" id="nav_rapor_akademik"><i class="fa-solid fa-file-signature me-2 text-primary"></i> Rapor Akademik</a></li>
+            <li><a class="dropdown-item py-2 fw-bold" href="#" onclick="navTo('rapor')" id="nav_rapor"><i class="fa-solid fa-file-signature me-2 text-primary"></i> Rapor Akademik</a></li>
             <li><hr class="dropdown-divider"></li>
             <li><a class="dropdown-item py-2 fw-bold" href="#" onclick="navTo('rapor_p5')" id="nav_rapor_p5"><i class="fa-solid fa-print me-2 text-warning"></i> Rapor P5</a></li>
           </ul>
@@ -126,8 +126,9 @@
 </nav>
 
 <script>
+  // Rute URL Statis untuk GitHub Pages
   function navTo(page) {
-    window.top.location.href = SCRIPT_URL + "?page=" + page;
+    window.location.href = page + ".html";
   }
 
   document.addEventListener("DOMContentLoaded", function() {
@@ -137,7 +138,6 @@
     let user = JSON.parse(sessionStorage.getItem('eduUser') || '{}');
     let role = (user.role || '').toLowerCase();
 
-    // Fungsi pembantu menyembunyikan elemen <li> pembungkus
     const hideNavItem = (id) => {
       let el = document.getElementById(id);
       if (el) {
@@ -147,47 +147,35 @@
     };
 
     if (role === 'guru') {
-      // Sembunyikan menu Master data institusi untuk guru biasa
-      // hideNavItem('nav_master');
-
-      // Jika BUKAN Wali Kelas, sembunyikan modul evaluasi P5 dan dropdown Cetak Rapor
       if (!user.is_wali_kelas) {
         hideNavItem('nav_catatan_p5');
         hideNavItem('navbarDropdownRapor');
       }
     } else if (role === 'siswa') {
-      // Siswa hanya boleh melihat Dashboard/Profil (sembunyikan seluruh menu operasional guru)
       ['nav_master', 'nav_harian', 'nav_presensi', 'nav_jurnal', 'nav_catatan_p5', 'navbarDropdownRapor'].forEach(hideNavItem);
     } else if (role === 'kepsek') {
-      // Kepala Sekolah memiliki akses monitoring semua kelas dan pencetakan,
-      // opsi: sembunyikan konfigurasi teknis data master institusi jika diperlukan
       hideNavItem('nav_master');
     }
-    // Catatan: Role 'admin' tidak difilter sehingga mendapatkan akses penuh ke semua menu.
 
     // -------------------------------------------------------------
-    // 2. HIGHLIGHT MENU AKTIF BERDASARKAN URL
+    // 2. HIGHLIGHT MENU AKTIF BERDASARKAN URL LOKAL
     // -------------------------------------------------------------
-    google.script.url.getLocation(function(location) {
-      let currentPage = 'dashboard';
-      if (location && location.parameter && location.parameter.page) {
-        currentPage = location.parameter.page;
+    let path = window.location.pathname;
+    let currentPage = path.split('/').pop().replace('.html', '') || 'dashboard';
+    if (currentPage === 'profil') currentPage = 'dashboard'; 
+    
+    document.querySelectorAll('.navbar-custom .nav-link').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.dropdown-item').forEach(el => el.classList.remove('active', 'bg-light'));
+    
+    let activeNav = document.getElementById('nav_' + currentPage);
+    if (activeNav) { 
+      activeNav.classList.add('active'); 
+      let parentDropdown = activeNav.closest('.dropdown');
+      if (parentDropdown) {
+        parentDropdown.querySelector('.nav-link.dropdown-toggle').classList.add('active');
+        activeNav.classList.add('bg-light');
       }
-      if (currentPage === 'profil') currentPage = 'dashboard'; 
-      
-      document.querySelectorAll('.navbar-custom .nav-link').forEach(el => el.classList.remove('active'));
-      document.querySelectorAll('.dropdown-item').forEach(el => el.classList.remove('active', 'bg-light'));
-      
-      let activeNav = document.getElementById('nav_' + currentPage);
-      if (activeNav) { 
-        activeNav.classList.add('active'); 
-        let parentDropdown = activeNav.closest('.dropdown');
-        if (parentDropdown) {
-          parentDropdown.querySelector('.nav-link.dropdown-toggle').classList.add('active');
-          activeNav.classList.add('bg-light');
-        }
-      }
-    });
+    }
 
     // -------------------------------------------------------------
     // 3. RESPONSIVE TABLE CONTAINER
@@ -224,7 +212,7 @@
       if (result.isConfirmed) {
          sessionStorage.removeItem('eduUser');
          sessionStorage.removeItem('eduAppState'); 
-         window.top.location.href = SCRIPT_URL + "?page=login";
+         window.location.href = "login.html"; // Redirect ke statis login.html
       }
     });
   }
